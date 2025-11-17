@@ -32,18 +32,18 @@ dependencies = [
     "tqdm",
     "typer",
 ]
-requires-python = "~=3.15.0"
+requires-python = ">=3.14"
 
 
 [tool.ruff]
 line-length = 99
-src = ["ddib"]
-include = ["pyproject.toml", "ddib/**/*.py"]
+src = ["src"]
+include = ["pyproject.toml", "src/**/*.py"]
 
 [tool.ruff.lint]
 extend-select = ["I"]  # Add import sorting
 
 [tool.ruff.lint.isort]
-known-first-party = ["ddib"]
+known-first-party = ["src"]
 force-sort-within-sections = true
 
