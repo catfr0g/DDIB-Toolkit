@@ -4,13 +4,11 @@ Unit tests for the PyTorch Lightning trainer module.
 Each test is atomic and focuses on testing a single function or class method.
 """
 
-import pytest
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
-import pytorch_lightning as pl
+from torch.utils.data import DataLoader
 
-from ddib.utils.trainer import FlexibleModel, prepare_dataloader, train_model, create_simple_ffn
+from ddib.trainer import FlexibleModel, create_simple_ffn, prepare_dataloader, train_model
 
 
 def test_flexible_model_initialization():

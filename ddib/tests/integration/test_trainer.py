@@ -4,15 +4,12 @@ Integration tests for the PyTorch Lightning trainer module.
 These tests verify the complete workflow of training models with real data and real training loops.
 """
 
-import pytest
+import tempfile
+
 import torch
 import torch.nn as nn
-import tempfile
-import os
-from torch.utils.data import DataLoader, TensorDataset
-import pytorch_lightning as pl
 
-from ddib.utils.trainer import FlexibleModel, prepare_dataloader, train_model, create_simple_ffn
+from ddib.trainer import FlexibleModel, create_simple_ffn, prepare_dataloader, train_model
 
 
 def test_complete_training_workflow_regression():
@@ -246,7 +243,7 @@ def test_model_prediction_after_training():
     val_loader = prepare_dataloader(X_val, y_val, batch_size=16)
     
     # Train the model
-    results = train_model(
+    train_model(
         model=pl_model,
         train_dataloader=train_loader,
         val_dataloader=val_loader,
