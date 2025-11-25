@@ -9,7 +9,8 @@ import tempfile
 import torch
 import torch.nn as nn
 
-from ddib.trainer import FlexibleModel, create_simple_ffn, prepare_dataloader, train_model
+from ddib.trainer import FlexibleModel, prepare_dataloader, train_model
+from ddib.utils.models import create_simple_ffn
 
 
 def test_complete_training_workflow_regression():
