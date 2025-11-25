@@ -159,15 +159,10 @@ def train_model(
     Returns:
         Dictionary containing training results/metrics
     """
-    # Setup trainer
     trainer = pl.Trainer(
         max_epochs=max_epochs, accelerator=accelerator, devices=devices, **trainer_kwargs
     )
-
-    # Train the model
     trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
-
-    # Extract metrics
     results = {
         "final_train_loss": trainer.logged_metrics.get(
             "train_loss_epoch", torch.tensor(float("inf"))
@@ -177,7 +172,6 @@ def train_model(
         ).item(),
         "num_epochs": max_epochs,
     }
-
     return results
 
 
@@ -198,14 +192,10 @@ def create_simple_ffn(
     """
     layers = []
     prev_size = input_size
-
     for hidden_size in hidden_sizes:
         layers.append(nn.Linear(prev_size, hidden_size))
         layers.append(nn.ReLU())
         layers.append(nn.Dropout(dropout_rate))
         prev_size = hidden_size
-
-    # Output layer without activation or dropout
     layers.append(nn.Linear(prev_size, output_size))
-
     return nn.Sequential(*layers)

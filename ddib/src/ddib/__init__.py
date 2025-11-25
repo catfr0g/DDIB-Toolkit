@@ -1,1 +1,1 @@
-from ddib import config  # noqa: F401
+from experiments import config  # noqa: F401
