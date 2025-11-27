@@ -1,18 +1,34 @@
 """Training script for VGG/ResNet models with bottleneck width using DDIB."""
+import os
 from pathlib import Path
+import random
 from typing import Literal, Optional
 
 from loguru import logger
+import numpy as np
 import torch
 from torch import nn
 import typer
 
-from ddib.models import ResNetWithBottleneck, VGGWithBottleneck
-from ddib.trainer import IBModel, train_model
-from experiments.config import MODELS_DIR, RAW_DATA_DIR
-from experiments.dataset_loading import load_cifar10_dataset
+from src.ddib.models import ResNetWithBottleneck, VGGWithBottleneck
+from src.ddib.trainer import IBModel, train_model
+from src.experiments.config import MODELS_DIR, RAW_DATA_DIR
+from src.experiments.dataset_loading import load_cifar10_dataset
 
 app = typer.Typer()
+
+
+def seed_all(seed: int = 42):
+    """Function to fix seed"""
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True)
+    torch.multiprocessing.set_start_method("fork", force=True)
 
 
 @app.command()
@@ -34,6 +50,7 @@ def main(
     data_dir: Path = RAW_DATA_DIR,
     num_workers: int = 4,
     download: bool = True,
+    seed: int = 42
 ):
     """
     Train VGG/ResNet models with configurable bottleneck width using DDIB.
@@ -57,6 +74,7 @@ def main(
         num_workers: Number of workers for data loading
         download: Whether to download dataset if not present
     """
+    seed_all(seed)
     logger.info(f"Starting training with model: {model_arch}, bottleneck width: {bottleneck_width}")
 
     # Load CIFAR-10 dataset with train/validation/test splits
@@ -74,7 +92,7 @@ def main(
 
     # Create model based on architecture
     if "resnet" in model_arch.lower():
-        model = ResNetWithBottleneck(
+        model: nn.Module = ResNetWithBottleneck(
             arch=model_arch,
             num_classes=10,  # CIFAR-10 has 10 classes
             bottleneck_width=bottleneck_width

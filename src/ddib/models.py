@@ -77,20 +77,14 @@ class ResNetWithBottleneck(nn.Module):
         pretrained: bool = False,
     ) -> None:
         super().__init__()
-
         # Load the pretrained ResNet model
-        if pretrained:
-            self.resnet = getattr(torchvision.models, arch)(pretrained=True)
-            # Replace the final classifier to match the number of classes
-            num_features = self.resnet.fc.in_features
-            self.resnet.fc = nn.Identity()  # Remove the original classifier
-        else:
-            # Create a new ResNet without pretrained weights
-            self.resnet = getattr(torchvision.models, arch)(pretrained=False)
-            num_features = self.resnet.fc.in_features
-            self.resnet.fc = nn.Identity()  # Remove the original classifier
-
+        self.resnet = getattr(torchvision.models, arch)(pretrained=pretrained)
+        # Replace the final classifier to match the number of classes
+        num_features = self.resnet.fc.in_features
+        self.resnet.fc = nn.Identity()  # Remove the original classifier
         # Add optional bottleneck layer between features and classifier
+        self.bottleneck = None
+        classifier_input_size = num_features
         if bottleneck_width is not None:
             # Group bottleneck components in a sequential for easier access via hooks
             self.bottleneck = nn.Sequential(
@@ -99,10 +93,6 @@ class ResNetWithBottleneck(nn.Module):
                 nn.Dropout(0.5)
             )
             classifier_input_size = bottleneck_width
-        else:
-            self.bottleneck = None
-            classifier_input_size = num_features
-
         # Final classifier layer
         self.classifier = nn.Linear(classifier_input_size, num_classes)
 
@@ -110,14 +100,9 @@ class ResNetWithBottleneck(nn.Module):
         """Forward pass of the ResNet model with optional bottleneck."""
         # Extract features using the ResNet backbone
         x = self.resnet(x)
-
-        # Apply bottleneck if specified
         if self.bottleneck is not None:
             x = self.bottleneck(x)
-
-        # Apply final classifier
         x = self.classifier(x)
-
         return x
 
 
@@ -145,20 +130,12 @@ class VGGWithBottleneck(nn.Module):
         super().__init__()
 
         # Load the pretrained VGG model
-        if pretrained:
-            self.vgg = getattr(torchvision.models, arch)(pretrained=True)
-            # Replace the classifier to match the number of classes
-            num_features = self.vgg.classifier[0].in_features
-            # Remove the original classifier
-            self.vgg.classifier = nn.Identity()
-        else:
-            # Create a new VGG without pretrained weights
-            self.vgg = getattr(torchvision.models, arch)(pretrained=False)
-            num_features = self.vgg.classifier[0].in_features
-            # Remove the original classifier
-            self.vgg.classifier = nn.Identity()
-
+        self.vgg = getattr(torchvision.models, arch)(pretrained=pretrained)
+        num_features = self.vgg.classifier[0].in_features
+        self.vgg.classifier = nn.Identity()
         # Add optional bottleneck layer between features and classifier
+        self.bottleneck = None
+        classifier_input_size = num_features
         if bottleneck_width is not None:
             # Group bottleneck components in a sequential for easier access via hooks
             self.bottleneck = nn.Sequential(
@@ -167,10 +144,6 @@ class VGGWithBottleneck(nn.Module):
                 nn.Dropout(),
             )
             classifier_input_size = bottleneck_width
-        else:
-            self.bottleneck = None
-            classifier_input_size = num_features
-
         # Final classifier layer
         self.classifier = nn.Linear(classifier_input_size, num_classes)
 
