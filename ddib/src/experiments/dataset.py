@@ -1,28 +1,43 @@
+"""Script to load dataset"""
 from pathlib import Path
 
 from loguru import logger
-from tqdm import tqdm
 import typer
 
-from experiments.config import PROCESSED_DATA_DIR, RAW_DATA_DIR
+from experiments.config import RAW_DATA_DIR
+
+from .dataset_loading import load_cifar10_dataset
 
 app = typer.Typer()
 
 
 @app.command()
 def main(
-    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
-    input_path: Path = RAW_DATA_DIR / "dataset.csv",
-    output_path: Path = PROCESSED_DATA_DIR / "dataset.csv",
-    # ----------------------------------------------
+    data_dir: Path = RAW_DATA_DIR,
+    train_batch_size: int = 32,
+    val_batch_size: int = 32,
+    test_batch_size: int = 32,
+    train_val_split_ratio: float = 0.8,
+    num_workers: int = 4,
+    download: bool = True,
 ):
-    # ---- REPLACE THIS WITH YOUR OWN CODE ----
-    logger.info("Processing dataset...")
-    for i in tqdm(range(10), total=10):
-        if i == 5:
-            logger.info("Something happened for iteration 5.")
-    logger.success("Processing dataset complete.")
-    # -----------------------------------------
+    """Load CIFAR-10 dataset with train/validation/test splits."""
+    logger.info("Loading CIFAR-10 dataset...")
+
+    train_loader, val_loader, test_loader = load_cifar10_dataset(
+        data_dir=data_dir,
+        train_batch_size=train_batch_size,
+        val_batch_size=val_batch_size,
+        test_batch_size=test_batch_size,
+        train_val_split_ratio=train_val_split_ratio,
+        num_workers=num_workers,
+        download=download
+    )
+
+    logger.success("CIFAR-10 dataset loaded successfully!")
+    logger.info(f"Training batches: {len(train_loader)}")
+    logger.info(f"Validation batches: {len(val_loader)}")
+    logger.info(f"Test batches: {len(test_loader)}")
 
 
 if __name__ == "__main__":

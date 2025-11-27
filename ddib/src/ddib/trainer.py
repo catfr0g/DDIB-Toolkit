@@ -8,12 +8,16 @@ with different loss functions, train/validation splits, and other customizable p
 from typing import Any, Dict, Optional, Union
 
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import TensorBoardLogger
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
+from ddib.loss import DDIB_Regularization
+from ddib.models import forward_and_layer_outs
 
-class FlexibleModel(pl.LightningModule):
+
+class IBModel(pl.LightningModule):
     """
     A flexible PyTorch Lightning module for training neural networks with configurable loss functions.
 
@@ -29,17 +33,22 @@ class FlexibleModel(pl.LightningModule):
         self,
         model: nn.Module,
         loss_fn: nn.Module,
+        layer_to_optimize: str,
         val_loss_fn: Optional[nn.Module] = None,
         optimizer_class: type = torch.optim.Adam,
+        *,
         learning_rate: float = 1e-3,
-        **optimizer_kwargs,
-    ):
+        beta: float = 0.01,
+        top_k: int = 10,
+        **optimizer_kwargs
+    ) -> None:
         """
         Initialize the FlexibleModel.
 
         Args:
             model: The neural network model to train
             loss_fn: The loss function to use during training
+            layer_to_optimize: str
             val_loss_fn: Loss function for validation (uses loss_fn if None)
             optimizer_class: Class of optimizer to use (default: Adam)
             learning_rate: Learning rate for the optimizer
@@ -47,14 +56,17 @@ class FlexibleModel(pl.LightningModule):
         """
         super().__init__()
         self.model = model
-        self.loss_fn = loss_fn
+        self.beta = beta
+        self.top_k = top_k
+        self.layer_to_optimize = layer_to_optimize
+        self.loss_fn = DDIB_Regularization(loss_fn, beta=beta, top_k=top_k)
         self.val_loss_fn = val_loss_fn if val_loss_fn is not None else loss_fn
         self.optimizer_class = optimizer_class
         self.learning_rate = learning_rate
         self.optimizer_kwargs = optimizer_kwargs
         self.save_hyperparameters(ignore=["model", "loss_fn", "val_loss_fn"])
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor, *args, **kwargs) -> Any:  # pylint: disable=arguments-differ
         """
         Forward pass through the model.
 
@@ -66,7 +78,7 @@ class FlexibleModel(pl.LightningModule):
         """
         return self.model(x)
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch: tuple, batch_idx: int, *args, **kwargs) -> Dict[str, Any]:  # pylint: disable=arguments-differ
         """
         Training step for one batch.
 
@@ -78,13 +90,14 @@ class FlexibleModel(pl.LightningModule):
             Dict with 'loss' key containing the training loss
         """
         x, y = batch
-        y_hat = self(x)
-        loss = self.loss_fn(y_hat, y)
-
+        y_hat, outs = forward_and_layer_outs(self, x, [self.layer_to_optimize])
+        loss = self.loss_fn(y_hat, y, x, outs[self.layer_to_optimize])
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        if self.logger and hasattr(self.logger, "experiment"):
+            self.logger.experiment.add_scalar("Loss/Train", loss, self.global_step)
         return {"loss": loss}
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch: tuple, batch_idx: int, *args, **kwargs) -> Dict[str, Any]:  # pylint: disable=arguments-differ
         """
         Validation step for one batch.
 
@@ -98,11 +111,13 @@ class FlexibleModel(pl.LightningModule):
         x, y = batch
         y_hat = self(x)
         val_loss = self.val_loss_fn(y_hat, y)
-
         self.log("val_loss", val_loss, on_step=False, on_epoch=True, prog_bar=True)
+        if self.logger and hasattr(self.logger, "experiment"):
+            self.logger.experiment.add_scalar("Loss/Validation", val_loss, self.global_step)
+
         return {"val_loss": val_loss}
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> Any:
         """
         Configure the optimizer for training.
 
@@ -116,7 +131,10 @@ class FlexibleModel(pl.LightningModule):
 
 
 def prepare_dataloader(
-    X: torch.Tensor, y: torch.Tensor, batch_size: int = 32, shuffle: bool = True
+    X: torch.Tensor,
+    y: torch.Tensor,
+    batch_size: int = 32,
+    shuffle: bool = True,
 ) -> DataLoader:
     """
     Create a PyTorch DataLoader from input tensors.
@@ -142,7 +160,9 @@ def train_model(
     max_epochs: int = 10,
     accelerator: str = "auto",
     devices: Union[int, str] = "auto",
-    **trainer_kwargs,
+    log_dir: str = "tb_logs",
+    experiment_name: str = "ddib_experiment",
+    **trainer_kwargs: Any,
 ) -> Dict[str, Any]:
     """
     Train a PyTorch Lightning model with train and validation data.
@@ -154,11 +174,16 @@ def train_model(
         max_epochs: Maximum number of epochs to train
         accelerator: Accelerator to use for training ('auto', 'cpu', 'gpu', 'tpu', 'mps')
         devices: Devices to use for training
+        log_dir: Directory to save tensorboard logs
+        experiment_name: Name of the experiment for tensorboard
         **trainer_kwargs: Additional arguments to pass to the trainer
 
     Returns:
         Dictionary containing training results/metrics
     """
+    tb_logger = TensorBoardLogger(log_dir, name=experiment_name)
+    if "logger" not in trainer_kwargs:
+        trainer_kwargs["logger"] = tb_logger
     trainer = pl.Trainer(
         max_epochs=max_epochs, accelerator=accelerator, devices=devices, **trainer_kwargs
     )
@@ -173,4 +198,3 @@ def train_model(
         "num_epochs": max_epochs,
     }
     return results
-

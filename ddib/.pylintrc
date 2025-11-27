@@ -1,0 +1,14 @@
+[MESSAGES CONTROL]
+# Disable certain warning categories
+disable=
+    invalid-name,
+    unused-argument
+
+[FORMAT]
+# Maximum number of characters on a single line.
+max-line-length=120
+
+[DESIGN]
+# Maximum number of arguments for function / method
+max-args=20
+max-positional-arguments=10

@@ -15,9 +15,6 @@ PYTHON_INTERPRETER = python
 .PHONY: requirements
 requirements:
 	uv sync
-	
-
-
 
 ## Delete all compiled Python files
 .PHONY: clean
@@ -25,12 +22,12 @@ clean:
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
 
-
-## Lint using ruff (use `make format` to do formatting)
+## Lint using ruff, pylint and mypy (use `make format` to do formatting)
 .PHONY: lint
 lint:
-	ruff format --check
 	ruff check
+	pylint src/ddib/
+	mypy src/ddib/
 
 ## Format source code with ruff
 .PHONY: format
@@ -38,13 +35,10 @@ format:
 	ruff check --fix
 	ruff format
 
-
-
 ## Run tests
 .PHONY: test
 test:
 	python -m pytest tests
-
 
 ## Set up Python interpreter environment
 .PHONY: create_environment
