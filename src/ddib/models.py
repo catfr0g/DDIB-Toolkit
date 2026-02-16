@@ -45,7 +45,8 @@ def forward_and_layer_outs(
 
     def register_hook(name):
         def hook(module, input, output): # pylint: disable=redefined-builtin
-            outputs[name] = input[0] if isinstance(input, tuple) else input
+            # Capture the output of the layer instead of the input
+            outputs[name] = output
         return hook
 
     for name, module in model.named_modules():
@@ -100,6 +101,9 @@ class ResNetWithBottleneck(nn.Module):
         """Forward pass of the ResNet model with optional bottleneck."""
         # Extract features using the ResNet backbone
         x = self.resnet(x)
+        # Apply global average pooling to convert from 4D to 2D (if needed)
+        if len(x.shape) > 2:
+            x = torch.flatten(x, start_dim=1)  # Flatten all dims after batch dim
         if self.bottleneck is not None:
             x = self.bottleneck(x)
         x = self.classifier(x)

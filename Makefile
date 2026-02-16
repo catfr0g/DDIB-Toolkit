@@ -4,7 +4,7 @@
 
 PROJECT_NAME = ddib
 PYTHON_VERSION = 3.15
-PYTHON_INTERPRETER = python
+PYTHON_INTERPRETER = uv run python
 
 #################################################################################
 # COMMANDS                                                                      #
@@ -47,8 +47,11 @@ create_environment:
 	@echo ">>> New uv virtual environment created. Activate with:"
 	@echo ">>> Windows: .\\\\.venv\\\\Scripts\\\\activate"
 	@echo ">>> Unix/macOS: source ./.venv/bin/activate"
-	
 
+
+.PHONY: tensorboard
+tensorboard: requirements
+	uv run tensorboard --logdir tb_logs
 
 
 #################################################################################
@@ -59,8 +62,49 @@ create_environment:
 ## Make dataset
 .PHONY: data
 data: requirements
-	$(PYTHON_INTERPRETER) ddib/dataset.py
+	$(PYTHON_INTERPRETER) -m src.experiments.dataset
 
+
+.PHONY: train
+train: requirements
+	$(PYTHON_INTERPRETER) -m src.experiments.modeling.train
+
+
+## Run optimized grid search (advanced version - recommended)
+.PHONY: grid-search
+grid-search: requirements
+	$(PYTHON_INTERPRETER) -m src.experiments.modeling.advanced_optimized_grid_search_train \
+		--config config/grid_search_config.yaml \
+		--results-dir results/grid_search \
+		--max-concurrent -1 \
+		--batch-size 2
+
+
+## Run optimized grid search (batch version)
+.PHONY: grid-search-batch
+grid-search-batch: requirements
+	$(PYTHON_INTERPRETER) -m src.experiments.modeling.batch_optimized_grid_search_train \
+		--config config/grid_search_config.yaml \
+		--results-dir results/grid_search \
+		--batch-size 4
+
+
+## Run optimized grid search (parallel version)
+.PHONY: grid-search-parallel
+grid-search-parallel: requirements
+	$(PYTHON_INTERPRETER) -m src.experiments.modeling.optimized_grid_search_train \
+		--config config/grid_search_config.yaml \
+		--results-dir results/grid_search \
+		--max-concurrent -1
+
+
+## Run GPU-optimized grid search (single experiment at a time for maximum GPU utilization)
+.PHONY: grid-search-gpu
+grid-search-gpu: requirements
+	$(PYTHON_INTERPRETER) -m src.experiments.modeling.gpu_optimized_grid_search_train \
+		--config config/grid_search_config.yaml \
+		--results-dir results/grid_search \
+		--max-concurrent 3
 
 #################################################################################
 # Self Documenting Commands                                                     #

@@ -1,4 +1,5 @@
 """Training script for VGG/ResNet models with bottleneck width using DDIB."""
+
 import os
 from pathlib import Path
 import random
@@ -50,7 +51,7 @@ def main(
     data_dir: Path = RAW_DATA_DIR,
     num_workers: int = 4,
     download: bool = True,
-    seed: int = 42
+    seed: int = 42,
 ):
     """
     Train VGG/ResNet models with configurable bottleneck width using DDIB.
@@ -75,7 +76,9 @@ def main(
         download: Whether to download dataset if not present
     """
     seed_all(seed)
-    logger.info(f"Starting training with model: {model_arch}, bottleneck width: {bottleneck_width}")
+    logger.info(
+        f"Starting training with model: {model_arch}, bottleneck width: {bottleneck_width}"
+    )
 
     # Load CIFAR-10 dataset with train/validation/test splits
     logger.info("Loading CIFAR-10 dataset...")
@@ -86,7 +89,7 @@ def main(
         test_batch_size=test_batch_size,
         train_val_split_ratio=train_val_split_ratio,
         num_workers=num_workers,
-        download=download
+        download=download,
     )
     logger.success("Dataset loaded successfully!")
 
@@ -95,13 +98,13 @@ def main(
         model: nn.Module = ResNetWithBottleneck(
             arch=model_arch,
             num_classes=10,  # CIFAR-10 has 10 classes
-            bottleneck_width=bottleneck_width
+            bottleneck_width=bottleneck_width,
         )
     elif "vgg" in model_arch.lower():
         model = VGGWithBottleneck(
             arch=model_arch,
             num_classes=10,  # CIFAR-10 has 10 classes
-            bottleneck_width=bottleneck_width
+            bottleneck_width=bottleneck_width,
         )
     else:
         raise ValueError(f"Unsupported model architecture: {model_arch}")
@@ -124,7 +127,7 @@ def main(
         beta=beta,  # Beta parameter for DDIB regularization
         learning_rate=learning_rate,
         optimizer_class=torch.optim.Adam,
-        **{"weight_decay": weight_decay}
+        weight_decay=weight_decay,
     )
 
     # Train the model using the DDIB trainer

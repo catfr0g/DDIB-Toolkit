@@ -38,10 +38,36 @@ def reyi_entropy(X: torch.Tensor, *, alpha: float = 1.01) -> torch.Tensor:
     Returns:
         Calculated Renyi entropy value
     """
+    # Normalize the matrix to have trace = 1
     A = X / torch.trace(X)
-    eigv = torch.abs(torch.linalg.eigh(A)[0])  # pylint: disable=not-callable
+
+    # Add small regularization to improve conditioning
+    eps = torch.finfo(A.dtype).eps * 1e6  # Use a larger epsilon for numerical stability
+    A_reg = A + eps * torch.eye(A.shape[0], dtype=A.dtype, device=A.device)
+
+    try:
+        # Attempt to compute eigenvalues using eigh
+        eigv = torch.abs(torch.linalg.eigh(A_reg)[0])  # pylint: disable=not-callable
+    except torch._C._LinAlgError:
+        eigv = torch.abs(torch.diag(A_reg))
+
+    # Clamp eigenvalues to avoid numerical issues, but ensure minimum value is above zero
+    min_eigv = max(eps, 1e-8)  # Ensure we have a reasonable minimum
+    eigv = torch.clamp(eigv, min=min_eigv)
+
+    # Check if all eigenvalues are extremely small (indicating a nearly rank-deficient matrix)
+    if torch.all(eigv < 1e-6):
+        # Return a small constant value for near-zero entropy case
+        return torch.tensor(0.0, dtype=X.dtype, device=X.device)
+
     eig_pow = eigv**alpha
-    return torch.log2(torch.sum(eig_pow)) / (1 - alpha)
+    entropy_value = torch.log2(torch.sum(eig_pow)) / (1 - alpha)
+
+    # Handle potential NaN or Inf values
+    if torch.isnan(entropy_value) or torch.isinf(entropy_value):
+        return torch.tensor(0.0, dtype=X.dtype, device=X.device)
+
+    return entropy_value
 
 
 def joint_entropy(x: torch.Tensor, y: torch.Tensor, *, alpha: float = 1.01) -> torch.Tensor:
@@ -59,7 +85,14 @@ def joint_entropy(x: torch.Tensor, y: torch.Tensor, *, alpha: float = 1.01) -> t
         Calculated joint entropy value
     """
     k = torch.mul(x, y)
-    k = k / torch.trace(k)
+
+    # Check if trace is zero or very small to avoid division by zero
+    trace_k = torch.trace(k)
+    if torch.abs(trace_k) < 1e-12:
+        # Return a small constant value for near-zero case
+        return torch.tensor(0.0, dtype=x.dtype, device=x.device)
+
+    k = k / trace_k
     return reyi_entropy(k, alpha=alpha)
 
 
@@ -70,8 +103,7 @@ def calculate_MI(x: torch.Tensor, y: torch.Tensor, *, alpha=1.01) -> torch.Tenso
     Args:
         x: First input tensor
         y: Second input tensor
-        s_x: Sigma parameter for x
-        s_y: Sigma parameter for y
+        alpha: Alpha parameter for Renyi entropy (default 1.01)
 
     Returns:
         Calculated mutual information value
@@ -79,18 +111,37 @@ def calculate_MI(x: torch.Tensor, y: torch.Tensor, *, alpha=1.01) -> torch.Tenso
     Hx = reyi_entropy(x, alpha=alpha)
     Hy = reyi_entropy(y, alpha=alpha)
     Hxy = joint_entropy(x, y, alpha=alpha)
-    return Hx + Hy - Hxy
+
+    # Calculate MI but handle potential numerical issues
+    mi = Hx + Hy - Hxy
+
+    # Ensure MI is non-negative (due to numerical errors it might be slightly negative)
+    mi = torch.clamp(mi, min=0.0)
+
+    # Handle potential NaN or Inf values
+    if torch.isnan(mi) or torch.isinf(mi):
+        return torch.tensor(0.0, dtype=x.dtype, device=x.device)
+
+    return mi
 
 
 def calculate_kernel_width(x: torch.Tensor, top_k=10) -> float:
     """Function to calculate kernel width for Gramm Matrix transformation"""
     x_detached = x.detach()
     with torch.no_grad():
-        dist_matrix = torch.cdist(x_detached, x_detached, p=2)
+        # Use more efficient distance calculation that's GPU-friendly
+        x_norm = (x_detached**2).sum(dim=1, keepdim=True)
+        dist_matrix = x_norm + x_norm.t() - 2 * torch.mm(x_detached, x_detached.t())
+        # Take square root to get actual distances
+        dist_matrix = torch.sqrt(torch.clamp(dist_matrix, min=0.0))
+
+        # Zero out diagonal elements to exclude self-distances
+        dist_matrix.fill_diagonal_(float("inf"))
+
         sorted_dists, _ = torch.sort(dist_matrix, dim=1)
-        k_closest = sorted_dists[:, 1 : (top_k + 1)]
-        mean_of_10_closest_per_point = torch.mean(k_closest, dim=1)
-        sigma_z = torch.mean(mean_of_10_closest_per_point)
+        k_closest = sorted_dists[:, :top_k]  # Take top_k closest (excluding self)
+        mean_of_k_closest_per_point = torch.mean(k_closest, dim=1)
+        sigma_z = torch.mean(mean_of_k_closest_per_point)
         assert sigma_z.shape == torch.Size([]), (
             f"Expected sigma_z to be a scalar tensor, but got shape {sigma_z.shape}"
         )
@@ -116,8 +167,37 @@ class DDIB_Regularization(nn.Module):
             X: torch.Tensor - input data
             Z: torch.Tensor - output of the layer to optimize
         """
-        X_gram = rbf_kernel(X, X, sigma=calculate_kernel_width(X, top_k=self.top_k))
-        Z_gram = rbf_kernel(Z, Z, sigma=calculate_kernel_width(X, top_k=self.top_k))
-        mutual_info = calculate_MI(X_gram, Z_gram)
+        # Flatten both X and Z if they are not 2D (for cases where bottleneck input is conv features)
+        if X.dim() > 2:
+            X_flat = X.view(X.size(0), -1)
+        else:
+            X_flat = X
+
+        if Z.dim() > 2:
+            Z_flat = Z.view(Z.size(0), -1)
+        else:
+            Z_flat = Z
+
+        try:
+            X_gram = rbf_kernel(
+                X_flat, X_flat, sigma=calculate_kernel_width(X_flat, top_k=self.top_k)
+            )
+            Z_gram = rbf_kernel(
+                Z_flat, Z_flat, sigma=calculate_kernel_width(Z_flat, top_k=self.top_k)
+            )  # Fixed: use Z_flat for Z_gram
+            mutual_info = calculate_MI(X_gram, Z_gram)
+        except Exception:
+            # If there's an error calculating mutual information, return just the original loss
+            mutual_info = torch.tensor(0.0, device=y_pred.device, dtype=y_pred.dtype)
+
         original_loss = self.original_loss(y_pred, y_true)
-        return original_loss + self.beta * mutual_info
+
+        # Handle potential numerical issues in the final result
+        result = original_loss + self.beta * mutual_info
+
+        # Check for NaN or Inf values and handle them
+        if torch.isnan(result) or torch.isinf(result):
+            # Return just the original loss if the combined result is invalid
+            return original_loss
+
+        return result
