@@ -1,28 +1,28 @@
 # Grid Search Configuration for DDIB Training
 model_archs:
-    - resnet18
+  - resnet18
 
 bottleneck_widths:
-    - 64
-    - 128
+  - 64
+  - 128
 
 betas:
-    - 0.1
-    - 1.0
+  - 0.1
+  - 1.0
 
 seeds:
-    - 42
-    - 228
+  - 42
+  - 228
 
 training_params:
-    train_batch_size: 2048 # Reduced from 128 to save memory
-    val_batch_size: 2048 # Reduced from 128 to save memory
-    test_batch_size: 2048 # Reduced from 128 to save memory
-    num_epochs: 2 # Reduced from 200 to speed up search
-    learning_rate: 0.0001
-    weight_decay: 0.0001
-    alpha: 1.01
-    train_val_split_ratio: 0.8
-    num_workers: 2 # Increased for better data loading
-    download: true
-    precision: "16-mixed" # Enable mixed precision training for GPU
+  train_batch_size: 1024 # Reduced from 128 to save memory
+  val_batch_size: 1024 # Reduced from 128 to save memory
+  test_batch_size: 1024 # Reduced from 128 to save memory
+  num_epochs: 3 # Reduced from 200 to speed up search
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  alpha: 1.01
+  train_val_split_ratio: 0.8
+  num_workers: 2 # Increased for better data loading
+  download: true
+  precision: "16-mixed" # Enable mixed precision training for GPU

@@ -66,45 +66,20 @@ data: requirements
 
 
 .PHONY: train
-train: requirements
+train: data
 	$(PYTHON_INTERPRETER) -m src.experiments.modeling.train
 
 
 ## Run optimized grid search (advanced version - recommended)
 .PHONY: grid-search
-grid-search: requirements
+grid-search: data
 	$(PYTHON_INTERPRETER) -m src.experiments.modeling.advanced_optimized_grid_search_train \
 		--config config/grid_search_config.yaml \
-		--results-dir results/grid_search \
+		--results-dir results/grid_search_resnet18_2048 \
 		--max-concurrent -1 \
-		--batch-size 2
+		--batch-size 2 \
+		--logdir tb_logs_v2
 
-
-## Run optimized grid search (batch version)
-.PHONY: grid-search-batch
-grid-search-batch: requirements
-	$(PYTHON_INTERPRETER) -m src.experiments.modeling.batch_optimized_grid_search_train \
-		--config config/grid_search_config.yaml \
-		--results-dir results/grid_search \
-		--batch-size 4
-
-
-## Run optimized grid search (parallel version)
-.PHONY: grid-search-parallel
-grid-search-parallel: requirements
-	$(PYTHON_INTERPRETER) -m src.experiments.modeling.optimized_grid_search_train \
-		--config config/grid_search_config.yaml \
-		--results-dir results/grid_search \
-		--max-concurrent -1
-
-
-## Run GPU-optimized grid search (single experiment at a time for maximum GPU utilization)
-.PHONY: grid-search-gpu
-grid-search-gpu: requirements
-	$(PYTHON_INTERPRETER) -m src.experiments.modeling.gpu_optimized_grid_search_train \
-		--config config/grid_search_config.yaml \
-		--results-dir results/grid_search \
-		--max-concurrent 3
 
 #################################################################################
 # Self Documenting Commands                                                     #

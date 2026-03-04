@@ -1,0 +1,13 @@
+Grid Search Results Analysis
+============================================================
+
+Total experiments: 528
+Mean accuracy: 55.18%
+Best accuracy: 86.25%
+
+Best configuration:
+  Model: vgg11
+  Width: 256
+  Beta: 1e-07
+  Seed: 1984
+  Test Accuracy: 86.25%

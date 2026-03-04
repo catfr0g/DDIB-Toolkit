@@ -1,0 +1,21 @@
+Numerical Analysis Summary
+============================================================
+
+Total experiments: 528
+Best accuracy: 86.2500
+Mean accuracy: 55.1843
+Correlation (log_beta, accuracy): -0.7583
+Correlation (width, accuracy): 0.0848
+
+Model Performance:
+  Linear Regression CV R2: 0.4623
+  Random Forest CV R2: 0.1160
+
+Pareto-optimal configurations: 16
+Best k for clustering (silhouette): 5 (score=0.4897)
+
+Top configuration:
+  Model: vgg11
+  Beta: 1e-07
+  Width: 256
+  Accuracy: 86.2500
