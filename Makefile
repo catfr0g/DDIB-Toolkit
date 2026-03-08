@@ -75,11 +75,19 @@ train: data
 grid-search: data
 	$(PYTHON_INTERPRETER) -m src.experiments.modeling.advanced_optimized_grid_search_train \
 		--config config/grid_search_config.yaml \
-		--results-dir results/grid_search_resnet18_2048 \
+		--results-dir results/grid_search \
 		--max-concurrent -1 \
 		--batch-size 2 \
 		--logdir tb_logs_v2
 
+.PHONY: efficientnet-experiments
+efficientnet-experiments: data
+	$(PYTHON_INTERPRETER) -m src.experiments.modeling.advanced_optimized_grid_search_train \
+		--config config/efficientnet_config.yaml \
+		--results-dir results/efficientnet \
+		--max-concurrent -1 \
+		--batch-size 4 \
+		--logdir tb_logs
 
 #################################################################################
 # Self Documenting Commands                                                     #

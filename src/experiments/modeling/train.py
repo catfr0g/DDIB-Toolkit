@@ -11,7 +11,7 @@ import torch
 from torch import nn
 import typer
 
-from src.ddib.models import ResNetWithBottleneck, VGGWithBottleneck
+from src.ddib.models import EfficientNetWithBottleneck, ResNetWithBottleneck, VGGWithBottleneck
 from src.ddib.trainer import IBModel, train_model
 from src.experiments.config import MODELS_DIR, RAW_DATA_DIR
 from src.experiments.dataset_loading import load_cifar10_dataset
@@ -34,7 +34,9 @@ def seed_all(seed: int = 42):
 
 @app.command()
 def main(
-	model_arch: Literal['resnet18', 'vgg11'] = 'resnet18',
+	model_arch: Literal[
+		'resnet18', 'vgg11', 'efficientnet_b0', 'efficientnet_b1', 'efficientnet_b2'
+	] = 'resnet18',
 	bottleneck_width: Optional[int] = 128,
 	train_batch_size: int = 32,
 	val_batch_size: int = 32,
@@ -54,10 +56,10 @@ def main(
 	seed: int = 42,
 ):
 	"""
-	Train VGG/ResNet models with configurable bottleneck width using DDIB.
+	Train VGG/ResNet/EfficientNet models with configurable bottleneck width using DDIB.
 
 	Args:
-	    model_arch: Model architecture to use ('resnet18' or 'vgg11')
+	    model_arch: Model architecture to use ('resnet18', 'vgg11', or 'efficientnet_b0/b1/b2')
 	    bottleneck_width: Width of the bottleneck layer (None for no bottleneck)
 	    train_batch_size: Batch size for training
 	    val_batch_size: Batch size for validation
@@ -106,6 +108,12 @@ def main(
 			num_classes=10,  # CIFAR-10 has 10 classes
 			bottleneck_width=bottleneck_width,
 		)
+	elif 'efficientnet' in model_arch.lower():
+		model = EfficientNetWithBottleneck(
+			arch=model_arch,
+			num_classes=10,  # CIFAR-10 has 10 classes
+			bottleneck_width=bottleneck_width,
+		)
 	else:
 		raise ValueError(f'Unsupported model architecture: {model_arch}')
 
@@ -117,7 +125,12 @@ def main(
 		layer_to_optimize = 'bottleneck'
 	else:
 		# If no bottleneck, optimize the final layer before classifier
-		layer_to_optimize = 'resnet' if 'resnet' in model_arch.lower() else 'vgg'
+		if 'resnet' in model_arch.lower():
+			layer_to_optimize = 'resnet'
+		elif 'vgg' in model_arch.lower():
+			layer_to_optimize = 'vgg'
+		elif 'efficientnet' in model_arch.lower():
+			layer_to_optimize = 'efficient_net'
 
 	# Create the DDIB model wrapper
 	ddib_model = IBModel(

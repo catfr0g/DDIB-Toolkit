@@ -1,6 +1,7 @@
 # Grid Search Configuration for DDIB Training
 model_archs:
   - resnet18
+  - efficientnet_b0
 
 bottleneck_widths:
   - 64

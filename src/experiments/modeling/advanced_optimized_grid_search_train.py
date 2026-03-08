@@ -25,7 +25,7 @@ import torch.multiprocessing as mp
 import typer
 import yaml
 
-from src.ddib.models import ResNetWithBottleneck, VGGWithBottleneck
+from src.ddib.models import EfficientNetWithBottleneck, ResNetWithBottleneck, VGGWithBottleneck
 from src.ddib.trainer import IBModel, train_model
 from src.experiments.config import MODELS_DIR, RAW_DATA_DIR
 from src.experiments.dataset_loading import load_cifar10_dataset
@@ -46,6 +46,8 @@ def estimate_memory_requirements(batch_size: int, model_arch: str, bottleneck_wi
 		base_params = 11000000  # ~11M params for ResNet18
 	elif 'vgg' in model_arch.lower():
 		base_params = 9000000  # ~9M params for VGG11
+	elif 'efficientnet' in model_arch.lower():
+		base_params = 5000000  # ~5M params for EfficientNet-B0
 	else:
 		base_params = 10000000  # Default estimate
 
@@ -138,6 +140,12 @@ def run_single_training(
 			)
 		elif 'vgg' in model_arch.lower():
 			model = VGGWithBottleneck(
+				arch=model_arch,
+				num_classes=10,  # CIFAR-10 has 10 classes
+				bottleneck_width=bottleneck_width,
+			)
+		elif 'efficientnet' in model_arch.lower():
+			model = EfficientNetWithBottleneck(
 				arch=model_arch,
 				num_classes=10,  # CIFAR-10 has 10 classes
 				bottleneck_width=bottleneck_width,
@@ -293,6 +301,8 @@ def estimate_gpu_memory_usage(model_arch: str, bottleneck_width: int) -> float:
 		base_params = 11000000  # ~11M params for ResNet18
 	elif 'vgg' in model_arch.lower():
 		base_params = 9000000  # ~9M params for VGG11
+	elif 'efficientnet' in model_arch.lower():
+		base_params = 5000000  # ~5M params for EfficientNet-B0
 	else:
 		base_params = 10000000  # Default estimate
 

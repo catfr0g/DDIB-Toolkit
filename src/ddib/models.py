@@ -161,3 +161,60 @@ class VGGWithBottleneck(nn.Module):
 		x = self.classifier(x)
 
 		return x
+
+
+class EfficientNetWithBottleneck(nn.Module):
+	"""
+	EfficientNet model with configurable bottleneck layer between features and classifier.
+
+	This is a wrapper around torchvision's EfficientNet that adds an optional bottleneck
+	layer between the feature extractor and classifier.
+
+	Args:
+	    arch: Name of the EfficientNet architecture (e.g., 'efficientnet_b0', 'efficientnet_b1', etc.)
+	    num_classes: Number of output classes
+	    bottleneck_width: Width of the layer between features and classifier
+	    pretrained: Whether to use pretrained weights
+	"""
+
+	def __init__(
+		self,
+		arch: str = 'efficientnet_b0',
+		num_classes: int = 10,
+		bottleneck_width: Optional[int] = None,
+		pretrained: bool = False,
+	) -> None:
+		super().__init__()
+
+		# Load the pretrained EfficientNet model
+		self.efficient_net = getattr(torchvision.models, arch)(pretrained=pretrained)
+		# EfficientNet classifier is Sequential[Dropout, Linear], so get in_features from Linear layer
+		num_features = self.efficient_net.classifier[1].in_features
+		self.efficient_net.classifier = nn.Identity()
+		# Add optional bottleneck layer between features and classifier
+		self.bottleneck = None
+		classifier_input_size = num_features
+		if bottleneck_width is not None:
+			# Group bottleneck components in a sequential for easier access via hooks
+			self.bottleneck = nn.Sequential(
+				nn.Linear(num_features, bottleneck_width),
+				nn.ReLU(True),
+				nn.Dropout(),
+			)
+			classifier_input_size = bottleneck_width
+		# Final classifier layer
+		self.classifier = nn.Linear(classifier_input_size, num_classes)
+
+	def forward(self, x: torch.Tensor) -> torch.Tensor:
+		"""Forward pass of the EfficientNet model with optional bottleneck."""
+		# Extract features using the EfficientNet backbone
+		x = self.efficient_net(x)
+
+		# Apply bottleneck if specified
+		if self.bottleneck is not None:
+			x = self.bottleneck(x)
+
+		# Apply final classifier
+		x = self.classifier(x)
+
+		return x

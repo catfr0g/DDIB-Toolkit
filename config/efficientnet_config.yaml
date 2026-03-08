@@ -1,7 +1,5 @@
 # Grid Search Configuration for DDIB Training
 model_archs:
-  - resnet18
-  - vgg11
   - efficientnet_b0
   - efficientnet_b1
   - efficientnet_b2
