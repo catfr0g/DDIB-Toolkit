@@ -1,0 +1,21 @@
+Numerical Analysis Summary
+============================================================
+
+Total experiments: 793
+Best accuracy: 81.9900
+Mean accuracy: 59.0714
+Correlation (log_beta, accuracy): -0.8111
+Correlation (width, accuracy): 0.0692
+
+Model Performance:
+  Linear Regression CV R2: 0.6564
+  Random Forest CV R2: 0.9503
+
+Pareto-optimal configurations: 18
+Best k for clustering (silhouette): 2 (score=0.4812)
+
+Top configuration:
+  Model: efficientnet_b0
+  Beta: 0.01
+  Width: 128
+  Accuracy: 81.9900

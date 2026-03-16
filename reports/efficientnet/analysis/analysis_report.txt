@@ -1,0 +1,13 @@
+Grid Search Results Analysis
+============================================================
+
+Total experiments: 793
+Mean accuracy: 59.07%
+Best accuracy: 81.99%
+
+Best configuration:
+  Model: efficientnet_b0
+  Width: 128
+  Beta: 0.01
+  Seed: 12
+  Test Accuracy: 81.99%

@@ -84,7 +84,7 @@ grid-search: data
 efficientnet-experiments: data
 	$(PYTHON_INTERPRETER) -m src.experiments.modeling.advanced_optimized_grid_search_train \
 		--config config/efficientnet_config.yaml \
-		--results-dir results/efficientnet \
+		--results-dir results/efficientnet_b2 \
 		--max-concurrent -1 \
 		--batch-size 4 \
 		--logdir tb_logs
