@@ -1,6 +1,6 @@
 # %%
 """
-Numerical Analysis of Grid Search Results.
+Numerical Analysis of EfficientNet Grid Search Results.
 
 This script performs comprehensive statistical and ML analysis to discover
 relationships between:
@@ -12,8 +12,8 @@ Methods used:
 - Supervised learning (Random Forest, Gradient Boosting for feature importance)
 - Unsupervised learning (clustering, PCA for pattern discovery)
 
-Note: Run with `uv run notebooks/numerical_analisys.py`
-      Plots are saved to reports/numerical_analysis/ without blocking.
+Note: Run with `uv run notebooks/efficientnet_numerical_analisys.py`
+      Plots are saved to reports/efficientnet/numerical_analysis/ without blocking.
 """
 
 # Use non-interactive backend to avoid blocking
@@ -21,8 +21,6 @@ import matplotlib
 
 matplotlib.use('Agg')
 
-import json
-import os
 from pathlib import Path
 import warnings
 
@@ -32,12 +30,29 @@ import pandas as pd
 import seaborn as sns
 from sklearn.cluster import DBSCAN, KMeans
 from sklearn.decomposition import PCA
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.tree import DecisionTreeRegressor, plot_tree
+
+from experiments.analysis import (
+	add_engineered_features,
+	analyze_beta_metric_relationship,
+	compute_beta_group_statistics,
+	compute_correlation_matrix,
+	find_significant_beta_regions,
+	gradient_boosting_analysis,
+	linear_regression_analysis,
+	load_with_baseline,
+	pairwise_beta_significance,
+	plot_accuracy_vs_beta_with_gradient,
+	plot_bootstrap_ci_vs_beta,
+	plot_bootstrap_ci_vs_beta_with_baseline,
+	prepare_regression_data,
+	random_forest_analysis,
+	save_and_close,
+)
 
 # Set plot style
 sns.set_style('whitegrid')
@@ -52,16 +67,13 @@ BOTTLENECK_CMAP = 'viridis'
 # Load data
 PROJECT_ROOT = Path(__file__).parent.parent
 RESULTS_PATH = PROJECT_ROOT / 'results' / 'efficientnet' / 'grid_search_results_final.json'
+BASELINE_PATH = PROJECT_ROOT / 'results' / 'baseline' / 'grid_search_results_final.json'
 OUTPUT_DIR = PROJECT_ROOT / 'reports' / 'efficientnet' / 'numerical_analysis'
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 print(f'Loading data from: {RESULTS_PATH}')
-
-with open(RESULTS_PATH, 'r', encoding='utf-8') as f:
-	raw_data = json.load(f)
-
-df = pd.DataFrame(raw_data)
-print(f'Loaded {len(df)} experiments')
+efficientnet_models = ['efficientnet_b0', 'efficientnet_b1', 'efficientnet_b2']
+df = load_with_baseline(RESULTS_PATH, BASELINE_PATH, model_filter=efficientnet_models)
 print(f'\nColumns: {list(df.columns)}')
 print(f'\nData types:\n{df.dtypes}')
 
@@ -83,15 +95,7 @@ print(desc_stats)
 
 # Correlation analysis
 print('\n--- Correlation Matrix ---')
-corr_cols = [
-	'test_accuracy',
-	'final_empirical_compression',
-	'beta',
-	'bottleneck_width',
-	'final_val_loss',
-	'final_effective_capacity_utilization',
-]
-corr_matrix = df[corr_cols].corr()
+corr_matrix = compute_correlation_matrix(df)
 print(corr_matrix.round(3))
 
 
@@ -121,9 +125,11 @@ print('\n--- Beta vs Test Accuracy ---')
 beta_accuracy_corr = df['beta'].corr(df['test_accuracy'])
 print(f'Correlation: {beta_accuracy_corr:.4f}')
 
-# Log-transform beta for better analysis
-df['log_beta'] = np.log10(df['beta'])
-log_beta_accuracy_corr = df['log_beta'].corr(df['test_accuracy'])
+# Log-transform beta for better analysis (handle beta=0 by replacing with small positive value)
+df['log_beta'] = np.log10(df['beta'].replace(0, np.nan))
+# Compute correlation only on non-NaN values
+valid_mask = df['log_beta'].notna()
+log_beta_accuracy_corr = df.loc[valid_mask, 'log_beta'].corr(df.loc[valid_mask, 'test_accuracy'])
 print(f'Log-Beta vs Accuracy correlation: {log_beta_accuracy_corr:.4f}')
 
 
@@ -141,62 +147,599 @@ print(f'Log2-Width vs Accuracy correlation: {log_width_accuracy_corr:.4f}')
 
 # %%
 # =============================================================================
+# SECTION 1b: BOOTSTRAP STATISTICAL ANALYSIS OF BETA REGIONS
+# =============================================================================
+print('\n' + '=' * 60)
+print('SECTION 1b: BOOTSTRAP STATISTICAL ANALYSIS OF BETA REGIONS')
+print('=' * 60)
+
+# Use only non-baseline data for bootstrap analysis
+df_no_baseline = df[df['beta'] > 0].copy()
+
+# --- Accuracy bootstrap CIs ---
+print('\n--- Bootstrap Confidence Intervals: Test Accuracy ---')
+acc_stats = compute_beta_group_statistics(df_no_baseline, 'test_accuracy', n_bootstrap=10000)
+print(acc_stats.round(3).to_string(index=False))
+
+# --- Compression bootstrap CIs ---
+print('\n--- Bootstrap Confidence Intervals: Empirical Compression ---')
+comp_stats = compute_beta_group_statistics(
+	df_no_baseline, 'final_empirical_compression', n_bootstrap=10000
+)
+print(comp_stats.round(3).to_string(index=False))
+
+# --- Bootstrap CIs including baseline for comparison ---
+print('\n--- Bootstrap Confidence Intervals (with baseline): Test Accuracy ---')
+acc_stats_full = compute_beta_group_statistics(df, 'test_accuracy', n_bootstrap=10000)
+print(acc_stats_full.round(3).to_string(index=False))
+
+print('\n--- Bootstrap Confidence Intervals (with baseline): Empirical Compression ---')
+comp_stats_full = compute_beta_group_statistics(
+	df, 'final_empirical_compression', n_bootstrap=10000
+)
+print(comp_stats_full.round(3).to_string(index=False))
+
+# --- Significant beta regions for accuracy ---
+print('\n--- Significant Beta Regions: Test Accuracy ---')
+acc_sig_regions = find_significant_beta_regions(df_no_baseline, 'test_accuracy', n_bootstrap=10000)
+print(
+	acc_sig_regions[
+		['beta_from', 'beta_to', 'mean_a', 'mean_b', 'diff', 'significant', 'cohens_d']
+	]
+	.round(3)
+	.to_string(index=False)
+)
+
+# Count significant transitions
+n_sig_acc = acc_sig_regions['significant'].sum()
+print(
+	f'\nSignificant transitions (accuracy): {n_sig_acc} out of {len(acc_sig_regions)} adjacent pairs'
+)
+
+# --- Significant beta regions for compression ---
+print('\n--- Significant Beta Regions: Empirical Compression ---')
+comp_sig_regions = find_significant_beta_regions(
+	df_no_baseline, 'final_empirical_compression', n_bootstrap=10000
+)
+print(
+	comp_sig_regions[
+		['beta_from', 'beta_to', 'mean_a', 'mean_b', 'diff', 'significant', 'cohens_d']
+	]
+	.round(3)
+	.to_string(index=False)
+)
+
+n_sig_comp = comp_sig_regions['significant'].sum()
+print(
+	f'\nSignificant transitions (compression): {n_sig_comp} out of {len(comp_sig_regions)} adjacent pairs'
+)
+
+
+# %%
+# =============================================================================
+# SECTION 1c: RELATIONSHIP ANALYSIS - BETA, WIDTH, AND METRICS
+# =============================================================================
+print('\n' + '=' * 60)
+print('SECTION 1c: RELATIONSHIP ANALYSIS - BETA, WIDTH, AND METRICS')
+print('=' * 60)
+
+# Use only non-baseline data for relationship analysis
+print('\n--- Analyzing Relationships: Beta, Width, and Metrics ---')
+
+# Accuracy relationships
+print('\n=== Test Accuracy Relationships ===')
+acc_rel = analyze_beta_metric_relationship(df_no_baseline, 'test_accuracy')
+print(f'Samples: {acc_rel["n_samples"]}')
+print(f'\nSpearman Correlations:')
+print(
+	f'  log(beta) vs accuracy: r={acc_rel["beta_spearman_corr"]:.4f}, p={acc_rel["beta_spearman_p"]:.2e}'
+)
+print(
+	f'  width vs accuracy:     r={acc_rel["width_spearman_corr"]:.4f}, p={acc_rel["width_spearman_p"]:.2e}'
+)
+
+print(f'\nKruskal-Wallis Tests (group differences):')
+print(f'  Beta groups:    H={acc_rel["kw_beta_stat"]:.2f}, p={acc_rel["kw_beta_p"]:.2e}')
+print(f'  Width groups:   H={acc_rel["kw_width_stat"]:.2f}, p={acc_rel["kw_width_p"]:.2e}')
+
+print(f'\nPartial Correlations (controlling for other variable):')
+print(
+	f'  log(beta) | width:  r={acc_rel["partial_beta_corr"]:.4f}, p={acc_rel["partial_beta_p"]:.2e}'
+)
+print(
+	f'  width | log(beta):  r={acc_rel["partial_width_corr"]:.4f}, p={acc_rel["partial_width_p"]:.2e}'
+)
+
+print(f'\nTwo-Way ANOVA (beta x width interaction):')
+anova_acc = acc_rel['anova_table']
+for effect, vals in anova_acc.items():
+	print(f'  {effect}: F={vals["F"]:.2f}, p={vals["p"]:.2e}, df={vals["df"]}')
+print(f'\nModel R2 = {acc_rel["r_squared"]:.4f}')
+
+# Compression relationships
+print('\n=== Empirical Compression Relationships ===')
+comp_rel = analyze_beta_metric_relationship(df_no_baseline, 'final_empirical_compression')
+print(f'Samples: {comp_rel["n_samples"]}')
+print(f'\nSpearman Correlations:')
+print(
+	f'  log(beta) vs compression: r={comp_rel["beta_spearman_corr"]:.4f}, p={comp_rel["beta_spearman_p"]:.2e}'
+)
+print(
+	f'  width vs compression:     r={comp_rel["width_spearman_corr"]:.4f}, p={comp_rel["width_spearman_p"]:.2e}'
+)
+
+print(f'\nKruskal-Wallis Tests (group differences):')
+print(f'  Beta groups:    H={comp_rel["kw_beta_stat"]:.2f}, p={comp_rel["kw_beta_p"]:.2e}')
+print(f'  Width groups:   H={comp_rel["kw_width_stat"]:.2f}, p={comp_rel["kw_width_p"]:.2e}')
+
+print(f'\nPartial Correlations (controlling for other variable):')
+print(
+	f'  log(beta) | width:  r={comp_rel["partial_beta_corr"]:.4f}, p={comp_rel["partial_beta_p"]:.2e}'
+)
+print(
+	f'  width | log(beta):  r={comp_rel["partial_width_corr"]:.4f}, p={comp_rel["partial_width_p"]:.2e}'
+)
+
+print(f'\nTwo-Way ANOVA (beta x width interaction):')
+anova_comp = comp_rel['anova_table']
+for effect, vals in anova_comp.items():
+	print(f'  {effect}: F={vals["F"]:.2f}, p={vals["p"]:.2e}, df={vals["df"]}')
+print(f'\nModel R2 = {comp_rel["r_squared"]:.4f}')
+
+
+# %%
+# Visualize relationships: Accuracy (independent plots with larger fonts)
+plt.rcParams.update(
+	{'font.size': 14, 'axes.titlesize': 16, 'axes.labelsize': 14, 'legend.fontsize': 12}
+)
+
+# Scatter: log_beta vs accuracy
+fig, ax = plt.subplots(figsize=(10, 7))
+ax.scatter(
+	df_no_baseline['log_beta'],
+	df_no_baseline['test_accuracy'],
+	alpha=0.4,
+	s=30,
+	edgecolors='gray',
+	linewidth=0.5,
+)
+ax.set_xlabel('Log Beta', fontsize=14)
+ax.set_ylabel('Test Accuracy (%)', fontsize=14)
+ax.set_title(
+	f'Accuracy vs Log Beta\n(r={acc_rel["beta_spearman_corr"]:.3f}, p={acc_rel["beta_spearman_p"]:.2e})',
+	fontsize=16,
+)
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'rel_accuracy_vs_logbeta.png', dpi=150)
+print(f'\nSaved: rel_accuracy_vs_logbeta.png')
+plt.close('all')
+
+# Scatter: width vs accuracy
+fig, ax = plt.subplots(figsize=(10, 7))
+ax.scatter(
+	df_no_baseline['bottleneck_width'],
+	df_no_baseline['test_accuracy'],
+	alpha=0.4,
+	s=30,
+	edgecolors='gray',
+	linewidth=0.5,
+)
+ax.set_xlabel('Bottleneck Width', fontsize=14)
+ax.set_ylabel('Test Accuracy (%)', fontsize=14)
+ax.set_title(
+	f'Accuracy vs Width\n(r={acc_rel["width_spearman_corr"]:.3f}, p={acc_rel["width_spearman_p"]:.2e})',
+	fontsize=16,
+)
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'rel_accuracy_vs_width.png', dpi=150)
+print(f'Saved: rel_accuracy_vs_width.png')
+plt.close('all')
+
+# Box plot: accuracy by beta group
+fig, ax = plt.subplots(figsize=(12, 7))
+beta_groups_acc = df_no_baseline.groupby('beta')['test_accuracy'].apply(list)
+labels = [f'{b:.0e}' for b in beta_groups_acc.index]
+bp = ax.boxplot(beta_groups_acc.values, labels=labels, showfliers=False, patch_artist=True)
+for patch in bp['boxes']:
+	patch.set_facecolor('#1f77b4')
+	patch.set_alpha(0.7)
+ax.set_xlabel('Beta', fontsize=14)
+ax.set_ylabel('Test Accuracy (%)', fontsize=14)
+ax.set_title('Accuracy Distribution by Beta', fontsize=16)
+ax.tick_params(axis='x', rotation=45, labelsize=11)
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'rel_accuracy_by_beta.png', dpi=150)
+print(f'Saved: rel_accuracy_by_beta.png')
+plt.close('all')
+
+# Box plot: accuracy by width group
+fig, ax = plt.subplots(figsize=(12, 7))
+width_groups_acc = df_no_baseline.groupby('bottleneck_width')['test_accuracy'].apply(list)
+bp = ax.boxplot(
+	width_groups_acc.values,
+	labels=width_groups_acc.index.astype(str),
+	showfliers=False,
+	patch_artist=True,
+)
+for patch in bp['boxes']:
+	patch.set_facecolor('#2ca02c')
+	patch.set_alpha(0.7)
+ax.set_xlabel('Bottleneck Width', fontsize=14)
+ax.set_ylabel('Test Accuracy (%)', fontsize=14)
+ax.set_title('Accuracy Distribution by Width', fontsize=16)
+ax.tick_params(axis='x', rotation=45, labelsize=11)
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'rel_accuracy_by_width.png', dpi=150)
+print(f'Saved: rel_accuracy_by_width.png')
+plt.close('all')
+
+plt.rcParams.update(
+	{'font.size': 10, 'axes.titlesize': 12, 'axes.labelsize': 10, 'legend.fontsize': 10}
+)
+
+
+# %%
+# Visualize relationships: Compression (independent plots with larger fonts)
+plt.rcParams.update(
+	{'font.size': 14, 'axes.titlesize': 16, 'axes.labelsize': 14, 'legend.fontsize': 12}
+)
+
+# Scatter: log_beta vs compression
+fig, ax = plt.subplots(figsize=(10, 7))
+ax.scatter(
+	df_no_baseline['log_beta'],
+	df_no_baseline['final_empirical_compression'],
+	alpha=0.4,
+	s=30,
+	edgecolors='gray',
+	linewidth=0.5,
+)
+ax.set_xlabel('Log Beta', fontsize=14)
+ax.set_ylabel('Empirical Compression', fontsize=14)
+ax.set_title(
+	f'Compression vs Log Beta\n(r={comp_rel["beta_spearman_corr"]:.3f}, p={comp_rel["beta_spearman_p"]:.2e})',
+	fontsize=16,
+)
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'rel_compression_vs_logbeta.png', dpi=150)
+print(f'\nSaved: rel_compression_vs_logbeta.png')
+plt.close('all')
+
+# Scatter: width vs compression
+fig, ax = plt.subplots(figsize=(10, 7))
+ax.scatter(
+	df_no_baseline['bottleneck_width'],
+	df_no_baseline['final_empirical_compression'],
+	alpha=0.4,
+	s=30,
+	edgecolors='gray',
+	linewidth=0.5,
+)
+ax.set_xlabel('Bottleneck Width', fontsize=14)
+ax.set_ylabel('Empirical Compression', fontsize=14)
+ax.set_title(
+	f'Compression vs Width\n(r={comp_rel["width_spearman_corr"]:.3f}, p={comp_rel["width_spearman_p"]:.2e})',
+	fontsize=16,
+)
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'rel_compression_vs_width.png', dpi=150)
+print(f'Saved: rel_compression_vs_width.png')
+plt.close('all')
+
+# Box plot: compression by beta group
+fig, ax = plt.subplots(figsize=(12, 7))
+beta_groups_comp = df_no_baseline.groupby('beta')['final_empirical_compression'].apply(list)
+labels = [f'{b:.0e}' for b in beta_groups_comp.index]
+bp = ax.boxplot(beta_groups_comp.values, labels=labels, showfliers=False, patch_artist=True)
+for patch in bp['boxes']:
+	patch.set_facecolor('#ff7f0e')
+	patch.set_alpha(0.7)
+ax.set_xlabel('Beta', fontsize=14)
+ax.set_ylabel('Empirical Compression', fontsize=14)
+ax.set_title('Compression Distribution by Beta', fontsize=16)
+ax.tick_params(axis='x', rotation=45, labelsize=11)
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'rel_compression_by_beta.png', dpi=150)
+print(f'Saved: rel_compression_by_beta.png')
+plt.close('all')
+
+# Box plot: compression by width group
+fig, ax = plt.subplots(figsize=(12, 7))
+width_groups_comp = df_no_baseline.groupby('bottleneck_width')[
+	'final_empirical_compression'
+].apply(list)
+bp = ax.boxplot(
+	width_groups_comp.values,
+	labels=width_groups_comp.index.astype(str),
+	showfliers=False,
+	patch_artist=True,
+)
+for patch in bp['boxes']:
+	patch.set_facecolor('#d62728')
+	patch.set_alpha(0.7)
+ax.set_xlabel('Bottleneck Width', fontsize=14)
+ax.set_ylabel('Empirical Compression', fontsize=14)
+ax.set_title('Compression Distribution by Width', fontsize=16)
+ax.tick_params(axis='x', rotation=45, labelsize=11)
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'rel_compression_by_width.png', dpi=150)
+print(f'Saved: rel_compression_by_width.png')
+plt.close('all')
+
+plt.rcParams.update(
+	{'font.size': 10, 'axes.titlesize': 12, 'axes.labelsize': 10, 'legend.fontsize': 10}
+)
+
+
+# %%
+# Visualize bootstrap CIs for accuracy
+fig, ax = plt.subplots(figsize=(10, 6))
+plot_bootstrap_ci_vs_beta(
+	ax,
+	acc_stats,
+	'test_accuracy',
+	'Test Accuracy vs Beta (Bootstrap 95% CI)',
+	'Test Accuracy (%)',
+	significant_regions=acc_sig_regions,
+)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'bootstrap_accuracy_ci.png', dpi=150)
+print(f'\nSaved: bootstrap_accuracy_ci.png')
+plt.close('all')
+
+
+# %%
+# Visualize bootstrap CIs for compression
+fig, ax = plt.subplots(figsize=(10, 6))
+plot_bootstrap_ci_vs_beta(
+	ax,
+	comp_stats,
+	'final_empirical_compression',
+	'Empirical Compression vs Beta (Bootstrap 95% CI)',
+	'Empirical Compression',
+	significant_regions=comp_sig_regions,
+)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'bootstrap_compression_ci.png', dpi=150)
+print(f'Saved: bootstrap_compression_ci.png')
+plt.close('all')
+
+
+# %%
+# Bootstrap CIs with baseline comparison for accuracy
+print('\n--- Bootstrap CI vs Baseline: Test Accuracy ---')
+baseline_acc = acc_stats_full[acc_stats_full['beta'] == 0].iloc[0]
+print(
+	f'Baseline (beta=0) accuracy: {baseline_acc["mean"]:.2f} '
+	f'[{baseline_acc["ci_lower"]:.2f}, {baseline_acc["ci_upper"]:.2f}]'
+)
+
+fig, ax = plt.subplots(figsize=(12, 6))
+plot_bootstrap_ci_vs_beta_with_baseline(
+	ax,
+	acc_stats_full,
+	baseline_acc,
+	'test_accuracy',
+	'Test Accuracy vs Beta with Baseline Comparison (Bootstrap 95% CI)',
+	'Test Accuracy (%)',
+)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'bootstrap_accuracy_ci_vs_baseline.png', dpi=150)
+print(f'Saved: bootstrap_accuracy_ci_vs_baseline.png')
+plt.close('all')
+
+print('\nBeta regions significantly different from baseline (accuracy):')
+for _, row in acc_stats_full[acc_stats_full['beta'] > 0].iterrows():
+	is_sig = (row['ci_lower'] > baseline_acc['ci_upper']) or (
+		row['ci_upper'] < baseline_acc['ci_lower']
+	)
+	direction = 'higher' if row['mean'] > baseline_acc['mean'] else 'lower'
+	if is_sig:
+		print(
+			f'  beta={row["beta"]:.0e}: {direction} than baseline '
+			f'(mean={row["mean"]:.2f}, CI=[{row["ci_lower"]:.2f}, {row["ci_upper"]:.2f}])'
+		)
+
+
+# %%
+# Bootstrap CIs with baseline comparison for compression
+print('\n--- Bootstrap CI vs Baseline: Empirical Compression ---')
+baseline_comp = comp_stats_full[comp_stats_full['beta'] == 0].iloc[0]
+print(
+	f'Baseline (beta=0) compression: {baseline_comp["mean"]:.3f} '
+	f'[{baseline_comp["ci_lower"]:.3f}, {baseline_comp["ci_upper"]:.3f}]'
+)
+
+fig, ax = plt.subplots(figsize=(12, 6))
+plot_bootstrap_ci_vs_beta_with_baseline(
+	ax,
+	comp_stats_full,
+	baseline_comp,
+	'final_empirical_compression',
+	'Empirical Compression vs Beta with Baseline Comparison (Bootstrap 95% CI)',
+	'Empirical Compression',
+)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'bootstrap_compression_ci_vs_baseline.png', dpi=150)
+print(f'Saved: bootstrap_compression_ci_vs_baseline.png')
+plt.close('all')
+
+print('\nBeta regions significantly different from baseline (compression):')
+for _, row in comp_stats_full[comp_stats_full['beta'] > 0].iterrows():
+	is_sig = (row['ci_lower'] > baseline_comp['ci_upper']) or (
+		row['ci_upper'] < baseline_comp['ci_lower']
+	)
+	direction = 'higher' if row['mean'] > baseline_comp['mean'] else 'lower'
+	if is_sig:
+		print(
+			f'  beta={row["beta"]:.0e}: {direction} than baseline '
+			f'(mean={row["mean"]:.3f}, CI=[{row["ci_lower"]:.3f}, {row["ci_upper"]:.3f}])'
+		)
+
+
+# %%
+# Pairwise significance matrix for accuracy
+print('\n--- Pairwise Significance Matrix: Test Accuracy ---')
+acc_pairwise = pairwise_beta_significance(df_no_baseline, 'test_accuracy', n_bootstrap=5000)
+beta_vals = sorted(df_no_baseline['beta'].unique())
+sig_matrix = pd.DataFrame(index=beta_vals, columns=beta_vals, dtype=bool)
+for _, row in acc_pairwise.iterrows():
+	sig_matrix.loc[row['beta_a'], row['beta_b']] = row['p_significant']
+	sig_matrix.loc[row['beta_b'], row['beta_a']] = row['p_significant']
+sig_matrix = sig_matrix.fillna(False)
+
+# Create annotation matrix with significance levels and direction
+annot_matrix = pd.DataFrame('', index=beta_vals, columns=beta_vals)
+for _, row in acc_pairwise.iterrows():
+	a, b = row['beta_a'], row['beta_b']
+	d = row['cohens_d']  # signed Cohen's d: positive means a > b
+	if row['p_significant']:
+		if abs(d) >= 0.8:
+			level = '***'
+		elif abs(d) >= 0.5:
+			level = '**'
+		else:
+			level = '*'
+		direction = 'A>B' if d > 0 else 'A<B'
+		annot_matrix.loc[a, b] = f'{direction}\n{level}'
+		annot_matrix.loc[b, a] = f'{"B>A" if d > 0 else "B<A"}\n{level}'
+	else:
+		annot_matrix.loc[a, b] = 'ns'
+		annot_matrix.loc[b, a] = 'ns'
+
+fig, ax = plt.subplots(figsize=(12, 10))
+sig_numeric = sig_matrix.astype(int)
+sns.heatmap(
+	sig_numeric,
+	annot=annot_matrix,
+	fmt='',
+	cmap='RdYlGn_r',
+	ax=ax,
+	cbar_kws={'label': 'Significant (1=Yes, 0=No)'},
+	linewidths=0.5,
+	linecolor='gray',
+	annot_kws={'fontsize': 8},
+)
+ax.set_title(
+	'Pairwise Significance: Test Accuracy (95% Bootstrap CI)\n'
+	'A>B/B>A = direction, *** large (|d|≥0.8), ** medium (|d|≥0.5), * small, ns not significant'
+)
+ax.set_xlabel('Beta')
+ax.set_ylabel('Beta')
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'pairwise_significance_accuracy.png', dpi=150)
+print(f'Saved: pairwise_significance_accuracy.png')
+plt.close('all')
+
+# Print directional summary
+print('\n--- Directional Summary: Test Accuracy ---')
+print('Significant pairwise comparisons (A vs B shows which has higher accuracy):')
+for _, row in acc_pairwise.iterrows():
+	if row['p_significant']:
+		direction = 'A > B' if row['cohens_d'] > 0 else 'B > A'
+		d_mag = abs(row['cohens_d'])
+		effect = 'large' if d_mag >= 0.8 else ('medium' if d_mag >= 0.5 else 'small')
+		print(
+			f'  beta={row["beta_a"]:.0e} vs beta={row["beta_b"]:.0e}: '
+			f"{direction} (Cohen's d={row['cohens_d']:+.3f}, {effect})"
+		)
+
+
+# %%
+# Pairwise significance matrix for compression
+print('\n--- Pairwise Significance Matrix: Empirical Compression ---')
+comp_pairwise = pairwise_beta_significance(
+	df_no_baseline, 'final_empirical_compression', n_bootstrap=5000
+)
+sig_matrix_comp = pd.DataFrame(index=beta_vals, columns=beta_vals, dtype=bool)
+for _, row in comp_pairwise.iterrows():
+	sig_matrix_comp.loc[row['beta_a'], row['beta_b']] = row['p_significant']
+	sig_matrix_comp.loc[row['beta_b'], row['beta_a']] = row['p_significant']
+sig_matrix_comp = sig_matrix_comp.fillna(False)
+
+# Create annotation matrix with significance levels and direction
+annot_matrix_comp = pd.DataFrame('', index=beta_vals, columns=beta_vals)
+for _, row in comp_pairwise.iterrows():
+	a, b = row['beta_a'], row['beta_b']
+	d = row['cohens_d']  # signed Cohen's d
+	if row['p_significant']:
+		if abs(d) >= 0.8:
+			level = '***'
+		elif abs(d) >= 0.5:
+			level = '**'
+		else:
+			level = '*'
+		direction = 'A>B' if d > 0 else 'A<B'
+		annot_matrix_comp.loc[a, b] = f'{direction}\n{level}'
+		annot_matrix_comp.loc[b, a] = f'{"B>A" if d > 0 else "B<A"}\n{level}'
+	else:
+		annot_matrix_comp.loc[a, b] = 'ns'
+		annot_matrix_comp.loc[b, a] = 'ns'
+
+fig, ax = plt.subplots(figsize=(12, 10))
+sig_numeric_comp = sig_matrix_comp.astype(int)
+sns.heatmap(
+	sig_numeric_comp,
+	annot=annot_matrix_comp,
+	fmt='',
+	cmap='RdYlGn_r',
+	ax=ax,
+	cbar_kws={'label': 'Significant (1=Yes, 0=No)'},
+	linewidths=0.5,
+	linecolor='gray',
+	annot_kws={'fontsize': 8},
+)
+ax.set_title(
+	'Pairwise Significance: Empirical Compression (95% Bootstrap CI)\n'
+	'A>B/B>A = direction, *** large (|d|≥0.8), ** medium (|d|≥0.5), * small, ns not significant'
+)
+ax.set_xlabel('Beta')
+ax.set_ylabel('Beta')
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'pairwise_significance_compression.png', dpi=150)
+print(f'Saved: pairwise_significance_compression.png')
+plt.close('all')
+
+# Print directional summary
+print('\n--- Directional Summary: Empirical Compression ---')
+print('Significant pairwise comparisons (A vs B shows which has higher compression):')
+for _, row in comp_pairwise.iterrows():
+	if row['p_significant']:
+		direction = 'A > B' if row['cohens_d'] > 0 else 'B > A'
+		d_mag = abs(row['cohens_d'])
+		effect = 'large' if d_mag >= 0.8 else ('medium' if d_mag >= 0.5 else 'small')
+		print(
+			f'  beta={row["beta_a"]:.0e} vs beta={row["beta_b"]:.0e}: '
+			f"{direction} (Cohen's d={row['cohens_d']:+.3f}, {effect})"
+		)
+
+
+# %%
+# =============================================================================
 # SECTION 2: LINEAR REGRESSION ANALYSIS
 # =============================================================================
 print('\n' + '=' * 60)
 print('SECTION 2: LINEAR REGRESSION ANALYSIS')
 print('=' * 60)
 
-# Prepare features
-X = df[['log_beta', 'bottleneck_width']].copy()
-y_accuracy = df['test_accuracy']
-y_compression = df['final_empirical_compression']
+# Prepare features - exclude beta=0 (baseline) from log-based regression
+df_regression, X, y_accuracy, y_compression = prepare_regression_data(df)
+print(f'Using {len(X)} experiments (excluding baseline beta=0) for regression analysis')
 
 # Model 1: Predict test_accuracy
-print('\n--- Model 1: Predicting Test Accuracy ---')
-lr_accuracy = LinearRegression()
-lr_accuracy.fit(X, y_accuracy)
-y_pred_acc = lr_accuracy.predict(X)
+lr_results = linear_regression_analysis(X, y_accuracy, name='Test Accuracy')
 
-print(f'R2 Score: {r2_score(y_accuracy, y_pred_acc):.4f}')
-print(f'RMSE: {np.sqrt(mean_squared_error(y_accuracy, y_pred_acc)):.4f}')
-print(f'\nCoefficients:')
-print(f'  log_beta: {lr_accuracy.coef_[0]:.4f}')
-print(f'  bottleneck_width: {lr_accuracy.coef_[1]:.4f}')
-print(f'  Intercept: {lr_accuracy.intercept_:.4f}')
-
-# Cross-validation
-cv_scores = cross_val_score(lr_accuracy, X, y_accuracy, cv=5, scoring='r2')
-print(f'\nCross-validation R2: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})')
-
-
-# %%
 # Model 2: Predict final_empirical_compression
 print('\n--- Model 2: Predicting Empirical Compression ---')
-lr_compression = LinearRegression()
-lr_compression.fit(X, y_compression)
-y_pred_comp = lr_compression.predict(X)
-
-print(f'R2 Score: {r2_score(y_compression, y_pred_comp):.4f}')
-print(f'RMSE: {np.sqrt(mean_squared_error(y_compression, y_pred_comp)):.4f}')
-print(f'\nCoefficients:')
-print(f'  log_beta: {lr_compression.coef_[0]:.4f}')
-print(f'  bottleneck_width: {lr_compression.coef_[1]:.4f}')
-print(f'  Intercept: {lr_compression.intercept_:.4f}')
-
-cv_scores_comp = cross_val_score(lr_compression, X, y_compression, cv=5, scoring='r2')
-print(f'\nCross-validation R2: {cv_scores_comp.mean():.4f} (+/- {cv_scores_comp.std() * 2:.4f})')
-
-
-# %%
-# Ridge regression for regularization
-print('\n--- Ridge Regression (Regularized) ---')
-ridge_accuracy = Ridge(alpha=1.0)
-ridge_accuracy.fit(X, y_accuracy)
-print(f'Ridge R2: {r2_score(y_accuracy, ridge_accuracy.predict(X)):.4f}')
-print(
-	f'Ridge Coefficients: log_beta={ridge_accuracy.coef_[0]:.4f}, width={ridge_accuracy.coef_[1]:.4f}'
-)
+lr_comp_results = linear_regression_analysis(X, y_compression, name='Empirical Compression')
 
 
 # %%
@@ -205,17 +748,17 @@ fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
 # Top-left: Actual vs Predicted (Accuracy)
 ax = axes[0, 0]
-ax.scatter(y_accuracy, y_pred_acc, alpha=0.5, edgecolors='black', linewidth=0.5, s=40)
+ax.scatter(y_accuracy, lr_results['y_pred'], alpha=0.5, edgecolors='black', linewidth=0.5, s=40)
 ax.plot([y_accuracy.min(), y_accuracy.max()], [y_accuracy.min(), y_accuracy.max()], 'r--', lw=2)
 ax.set_xlabel('Actual Test Accuracy')
 ax.set_ylabel('Predicted Test Accuracy')
-ax.set_title(f'Linear Regression: Test Accuracy\nR2 = {r2_score(y_accuracy, y_pred_acc):.4f}')
+ax.set_title(f'Linear Regression: Test Accuracy\nR2 = {lr_results["r2"]:.4f}')
 ax.grid(True, alpha=0.3)
 
 # Top-right: Residuals (Accuracy)
 ax = axes[0, 1]
-residuals_acc = y_accuracy - y_pred_acc
-ax.scatter(y_pred_acc, residuals_acc, alpha=0.5, edgecolors='black', linewidth=0.5, s=40)
+residuals_acc = lr_results['residuals']
+ax.scatter(lr_results['y_pred'], residuals_acc, alpha=0.5, edgecolors='black', linewidth=0.5, s=40)
 ax.axhline(y=0, color='r', linestyle='--', lw=2)
 ax.set_xlabel('Predicted Test Accuracy')
 ax.set_ylabel('Residuals (Actual - Predicted)')
@@ -236,9 +779,9 @@ ax.grid(True, alpha=0.3)
 # Bottom-right: Feature relationship (log_beta vs accuracy)
 ax = axes[1, 1]
 scatter = ax.scatter(
-	df['log_beta'],
-	df['test_accuracy'],
-	c=df['test_accuracy'],
+	df_regression['log_beta'],
+	df_regression['test_accuracy'],
+	c=df_regression['test_accuracy'],
 	cmap=BOTTLENECK_CMAP,
 	alpha=0.6,
 	s=40,
@@ -246,11 +789,11 @@ scatter = ax.scatter(
 	linewidth=0.3,
 )
 # Add regression line
-z = np.polyfit(df['log_beta'], df['test_accuracy'], 1)
+z = np.polyfit(df_regression['log_beta'], df_regression['test_accuracy'], 1)
 p = np.poly1d(z)
 ax.plot(
-	df['log_beta'].sort_values(),
-	p(df['log_beta'].sort_values()),
+	df_regression['log_beta'].sort_values(),
+	p(df_regression['log_beta'].sort_values()),
 	'r-',
 	lw=2,
 	label=f'y={z[0]:.2f}x+{z[1]:.2f}',
@@ -276,50 +819,17 @@ print('SECTION 3: NON-LINEAR MODELS')
 print('=' * 60)
 
 # Prepare features with more variables
-X_full = df[['log_beta', 'bottleneck_width']].copy()
-# Add interaction term
-X_full['beta_x_width'] = X_full['log_beta'] * X_full['bottleneck_width']
-X_full['width_squared'] = X_full['bottleneck_width'] ** 2
+X_full = add_engineered_features(df_regression[['log_beta', 'bottleneck_width']])
 
 # Model 3: Random Forest for test_accuracy
 print('\n--- Random Forest: Test Accuracy ---')
-rf_accuracy = RandomForestRegressor(
-	n_estimators=100, max_depth=10, min_samples_split=5, random_state=42, n_jobs=-1
-)
-rf_accuracy.fit(X_full, y_accuracy)
-y_pred_rf = rf_accuracy.predict(X_full)
-
-print(f'Train R2: {r2_score(y_accuracy, y_pred_rf):.4f}')
-print(f'RMSE: {np.sqrt(mean_squared_error(y_accuracy, y_pred_rf)):.4f}')
-
-# Feature importance
-print('\nFeature Importance (Random Forest):')
-for feat, imp in zip(X_full.columns, rf_accuracy.feature_importances_):
-	print(f'  {feat}: {imp:.4f}')
-
-# Cross-validation
-cv_rf = cross_val_score(rf_accuracy, X_full, y_accuracy, cv=5, scoring='r2')
-print(f'\nCross-validation R2: {cv_rf.mean():.4f} (+/- {cv_rf.std() * 2:.4f})')
+rf_results = random_forest_analysis(X_full, y_accuracy, name='Test Accuracy')
 
 
 # %%
 # Model 4: Gradient Boosting for test_accuracy
 print('\n--- Gradient Boosting: Test Accuracy ---')
-gb_accuracy = GradientBoostingRegressor(
-	n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42
-)
-gb_accuracy.fit(X_full, y_accuracy)
-y_pred_gb = gb_accuracy.predict(X_full)
-
-print(f'Train R2: {r2_score(y_accuracy, y_pred_gb):.4f}')
-print(f'RMSE: {np.sqrt(mean_squared_error(y_accuracy, y_pred_gb)):.4f}')
-
-print('\nFeature Importance (Gradient Boosting):')
-for feat, imp in zip(X_full.columns, gb_accuracy.feature_importances_):
-	print(f'  {feat}: {imp:.4f}')
-
-cv_gb = cross_val_score(gb_accuracy, X_full, y_accuracy, cv=5, scoring='r2')
-print(f'\nCross-validation R2: {cv_gb.mean():.4f} (+/- {cv_gb.std() * 2:.4f})')
+gb_results = gradient_boosting_analysis(X_full, y_accuracy, name='Test Accuracy')
 
 
 # %%
@@ -328,8 +838,18 @@ print('\n--- Model Comparison ---')
 models_comparison = pd.DataFrame(
 	{
 		'Model': ['Linear Regression', 'Ridge', 'Random Forest', 'Gradient Boosting'],
-		'CV_R2_Mean': [cv_scores.mean(), cv_scores.mean(), cv_rf.mean(), cv_gb.mean()],
-		'CV_R2_Std': [cv_scores.std(), cv_scores.std(), cv_rf.std(), cv_gb.std()],
+		'CV_R2_Mean': [
+			lr_results['cv_r2_mean'],
+			lr_results['cv_r2_mean'],
+			rf_results['cv_r2_mean'],
+			gb_results['cv_r2_mean'],
+		],
+		'CV_R2_Std': [
+			lr_results['cv_r2_std'],
+			lr_results['cv_r2_std'],
+			rf_results['cv_r2_std'],
+			gb_results['cv_r2_std'],
+		],
 	}
 )
 print(models_comparison)
@@ -339,7 +859,7 @@ fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
 ax = axes[0]
 rf_importance = pd.DataFrame(
-	{'Feature': X_full.columns, 'Importance': rf_accuracy.feature_importances_}
+	{'Feature': X_full.columns, 'Importance': list(rf_results['feature_importances'].values())}
 ).sort_values('Importance', ascending=True)
 ax.barh(rf_importance['Feature'], rf_importance['Importance'])
 ax.set_xlabel('Importance')
@@ -348,7 +868,7 @@ ax.grid(True, alpha=0.3)
 
 ax = axes[1]
 gb_importance = pd.DataFrame(
-	{'Feature': X_full.columns, 'Importance': gb_accuracy.feature_importances_}
+	{'Feature': X_full.columns, 'Importance': list(gb_results['feature_importances'].values())}
 ).sort_values('Importance', ascending=True)
 ax.barh(gb_importance['Feature'], gb_importance['Importance'])
 ax.set_xlabel('Importance')
@@ -369,9 +889,9 @@ print('\n' + '=' * 60)
 print('SECTION 4: UNSUPERVISED LEARNING - CLUSTERING')
 print('=' * 60)
 
-# Prepare data for clustering
+# Prepare data for clustering (use regression data without NaN)
 cluster_features = ['log_beta', 'bottleneck_width', 'test_accuracy', 'final_empirical_compression']
-X_cluster = df[cluster_features].copy()
+X_cluster = df_regression[cluster_features].copy()
 
 # Standardize features
 scaler = StandardScaler()
@@ -425,11 +945,11 @@ plt.close('all')
 # Apply K-Means with optimal k (typically 4)
 optimal_k = 4
 kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
-df['cluster'] = kmeans.fit_predict(X_cluster_scaled)
+df_regression['cluster'] = kmeans.fit_predict(X_cluster_scaled)
 
 # Analyze cluster characteristics
 print(f'\n--- Cluster Characteristics (k={optimal_k}) ---')
-cluster_stats = df.groupby('cluster')[cluster_features].agg(['mean', 'std'])
+cluster_stats = df_regression.groupby('cluster')[cluster_features].agg(['mean', 'std'])
 print(cluster_stats.round(3))
 
 
@@ -444,10 +964,10 @@ cluster_labels = ['Low Acc, High Beta', 'High Acc, Low Beta', 'Medium Acc', 'Tra
 # Cluster visualization in different projections
 ax = axes[0, 0]
 for cluster_id in range(optimal_k):
-	cluster_mask = df['cluster'] == cluster_id
+	cluster_mask = df_regression['cluster'] == cluster_id
 	ax.scatter(
-		df.loc[cluster_mask, 'log_beta'],
-		df.loc[cluster_mask, 'bottleneck_width'],
+		df_regression.loc[cluster_mask, 'log_beta'],
+		df_regression.loc[cluster_mask, 'bottleneck_width'],
 		c=[cluster_colors[cluster_id]],
 		label=cluster_labels[cluster_id],
 		alpha=0.6,
@@ -459,17 +979,15 @@ ax.set_xlabel('Log Beta')
 ax.set_ylabel('Bottleneck Width')
 ax.set_title('Clusters: Beta vs Width')
 ax.set_yscale('log', base=2)
-ax.legend(title='Cluster', loc='best')
 ax.grid(True, alpha=0.3)
 
 ax = axes[0, 1]
 for cluster_id in range(optimal_k):
-	cluster_mask = df['cluster'] == cluster_id
+	cluster_mask = df_regression['cluster'] == cluster_id
 	ax.scatter(
-		df.loc[cluster_mask, 'log_beta'],
-		df.loc[cluster_mask, 'test_accuracy'],
+		df_regression.loc[cluster_mask, 'log_beta'],
+		df_regression.loc[cluster_mask, 'test_accuracy'],
 		c=[cluster_colors[cluster_id]],
-		label=cluster_labels[cluster_id],
 		alpha=0.6,
 		s=50,
 		edgecolors='black',
@@ -478,17 +996,15 @@ for cluster_id in range(optimal_k):
 ax.set_xlabel('Log Beta')
 ax.set_ylabel('Test Accuracy')
 ax.set_title('Clusters: Beta vs Accuracy')
-ax.legend(title='Cluster', loc='best')
 ax.grid(True, alpha=0.3)
 
 ax = axes[1, 0]
 for cluster_id in range(optimal_k):
-	cluster_mask = df['cluster'] == cluster_id
+	cluster_mask = df_regression['cluster'] == cluster_id
 	ax.scatter(
-		df.loc[cluster_mask, 'bottleneck_width'],
-		df.loc[cluster_mask, 'test_accuracy'],
+		df_regression.loc[cluster_mask, 'bottleneck_width'],
+		df_regression.loc[cluster_mask, 'test_accuracy'],
 		c=[cluster_colors[cluster_id]],
-		label=cluster_labels[cluster_id],
 		alpha=0.6,
 		s=50,
 		edgecolors='black',
@@ -498,17 +1014,15 @@ ax.set_xlabel('Bottleneck Width')
 ax.set_ylabel('Test Accuracy')
 ax.set_title('Clusters: Width vs Accuracy')
 ax.set_xscale('log', base=2)
-ax.legend(title='Cluster', loc='best')
 ax.grid(True, alpha=0.3)
 
 ax = axes[1, 1]
 for cluster_id in range(optimal_k):
-	cluster_mask = df['cluster'] == cluster_id
+	cluster_mask = df_regression['cluster'] == cluster_id
 	ax.scatter(
-		df.loc[cluster_mask, 'final_empirical_compression'],
-		df.loc[cluster_mask, 'test_accuracy'],
+		df_regression.loc[cluster_mask, 'final_empirical_compression'],
+		df_regression.loc[cluster_mask, 'test_accuracy'],
 		c=[cluster_colors[cluster_id]],
-		label=cluster_labels[cluster_id],
 		alpha=0.6,
 		s=50,
 		edgecolors='black',
@@ -517,13 +1031,14 @@ for cluster_id in range(optimal_k):
 ax.set_xlabel('Empirical Compression')
 ax.set_ylabel('Test Accuracy')
 ax.set_title('Clusters: Compression vs Accuracy')
-ax.legend(title='Cluster', loc='best')
-ax.grid(True, alpha=0.3)
 ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig(OUTPUT_DIR / 'cluster_visualization.png', dpi=150)
-print(f'Saved: cluster_visualization.png')
+try:
+	plt.savefig(OUTPUT_DIR / 'cluster_visualization.png', dpi=150)
+	print(f'Saved: cluster_visualization.png')
+except Exception as e:
+	print(f'Warning: Could not save cluster_visualization.png: {e}')
 plt.close('all')
 
 
@@ -531,12 +1046,12 @@ plt.close('all')
 # DBSCAN for density-based clustering
 print('\n--- DBSCAN Clustering ---')
 dbscan = DBSCAN(eps=0.5, min_samples=5)
-df['dbscan_cluster'] = dbscan.fit_predict(X_cluster_scaled)
+df_regression['dbscan_cluster'] = dbscan.fit_predict(X_cluster_scaled)
 
-n_clusters_dbscan = len(set(df['dbscan_cluster'])) - (
-	1 if -1 in df['dbscan_cluster'].values else 0
+n_clusters_dbscan = len(set(df_regression['dbscan_cluster'])) - (
+	1 if -1 in df_regression['dbscan_cluster'].values else 0
 )
-n_noise = list(df['dbscan_cluster']).count(-1)
+n_noise = list(df_regression['dbscan_cluster']).count(-1)
 print(f'Number of clusters: {n_clusters_dbscan}')
 print(f'Number of noise points: {n_noise}')
 
@@ -605,7 +1120,6 @@ ax.grid(True, alpha=0.3)
 
 # PCA projection with better visibility
 ax = axes[1]
-# Use test_accuracy from cleaned X_pca dataframe (matching the PCA data)
 accuracy_colors = X_pca['test_accuracy'].values
 
 # Add jitter for better visibility
@@ -742,79 +1256,80 @@ print(f'Average bottleneck_width: {bottom_configs["bottleneck_width"].mean():.4f
 
 
 # %%
-# Visualize optimal region with heatmap background
-fig, ax = plt.subplots(figsize=(10, 8))
+# Visualize optimal region
+try:
+	fig, ax = plt.subplots(figsize=(10, 8))
 
-# Create heatmap background showing accuracy density
-from matplotlib.colors import LogNorm
+	# Filter out -inf log_beta values for plotting
+	valid_plot = df['log_beta'].replace([np.inf, -np.inf], np.nan).notna()
+	ax.scatter(
+		df.loc[valid_plot, 'log_beta'],
+		df.loc[valid_plot, 'bottleneck_width'],
+		c=df.loc[valid_plot, 'test_accuracy'],
+		cmap='YlOrRd',
+		alpha=0.6,
+		s=30,
+	)
 
-# All points as heatmap
-heatmap = ax.hexbin(
-	df['log_beta'],
-	df['bottleneck_width'],
-	C=df['test_accuracy'],
-	gridsize=20,
-	cmap='YlOrRd',
-	mincnt=1,
-	alpha=0.6,
-)
+	# Top configurations (filter -inf)
+	top_log_beta = np.log10(top_configs['beta']).replace([np.inf, -np.inf], np.nan)
+	top_valid = top_log_beta.notna()
+	ax.scatter(
+		top_log_beta[top_valid],
+		top_configs.loc[top_valid, 'bottleneck_width'],
+		c='gold',
+		s=100,
+		edgecolors='black',
+		linewidth=1.5,
+		label=f'Top {top_n}',
+		zorder=5,
+	)
 
-# Top configurations
-ax.scatter(
-	np.log10(top_configs['beta']),
-	top_configs['bottleneck_width'],
-	c='red',
-	s=150,
-	marker='*',
-	edgecolors='black',
-	linewidth=1.5,
-	label=f'Top {top_n}',
-	zorder=5,
-)
+	ax.set_xlabel('Log Beta')
+	ax.set_ylabel('Bottleneck Width')
+	ax.set_title('Optimal Configuration Region')
+	ax.set_yscale('log', base=2)
+	ax.legend()
+	ax.grid(True, alpha=0.3)
+	plt.colorbar(ax.collections[0], ax=ax, label='Test Accuracy')
 
-ax.set_xlabel('Log Beta')
-ax.set_ylabel('Bottleneck Width')
-ax.set_yscale('log', base=2)
-ax.set_title('Optimal Configuration Region\n(heatmap = accuracy, stars = top configurations)')
-ax.legend(loc='upper right')
-ax.grid(True, alpha=0.3)
-
-cb = plt.colorbar(heatmap, ax=ax)
-cb.set_label('Test Accuracy (%)')
-
-plt.tight_layout()
-plt.savefig(OUTPUT_DIR / 'optimal_region.png', dpi=150)
-print(f'\nSaved: optimal_region.png')
-plt.close('all')
+	plt.tight_layout()
+	fig.savefig(OUTPUT_DIR / 'optimal_region.png', dpi=150)
+	print(f'\nSaved: optimal_region.png')
+	plt.close('all')
+except Exception as e:
+	print(f'\nWarning: Could not create optimal_region.png: {e}')
+	plt.close('all')
 
 
 # %%
 # =============================================================================
-# SECTION 9: ACCURACY-COMPRESSION TRADE-OFF ANALYSIS
+# SECTION 9: ACCURACY-COMPRESSION TRADE-OFF
 # =============================================================================
 print('\n' + '=' * 60)
 print('SECTION 9: ACCURACY-COMPRESSION TRADE-OFF')
 print('=' * 60)
 
-# Pareto frontier analysis
-# Find non-dominated solutions (high accuracy, low compression)
-df['pareto_dominated'] = False
-for idx, row in df.iterrows():
-	# A solution is dominated if another has both higher accuracy and lower compression
-	dominated = (
-		(df['test_accuracy'] > row['test_accuracy'])
-		& (df['final_empirical_compression'] < row['final_empirical_compression'])
-	).any()
-	df.loc[idx, 'pareto_dominated'] = dominated
 
-pareto_front = df[~df['pareto_dominated']]
-print(f'\nPareto-optimal configurations: {len(pareto_front)}')
+def find_pareto_frontier(df_results, col1='test_accuracy', col2='final_empirical_compression'):
+	"""Find Pareto-optimal configurations."""
+	pareto = df_results.copy()
+	pareto = pareto.sort_values([col1, col2], ascending=[False, True])
+	pareto_frontier = []
+	max_col2 = -np.inf
+	for _, row in pareto.iterrows():
+		if row[col2] > max_col2:
+			pareto_frontier.append(row)
+			max_col2 = row[col2]
+	return pd.DataFrame(pareto_frontier)
+
+
+pareto_df = find_pareto_frontier(df)
+print(f'\nPareto-optimal configurations: {len(pareto_df)}')
 print(
-	pareto_front[
+	pareto_df[
 		['model_arch', 'bottleneck_width', 'beta', 'test_accuracy', 'final_empirical_compression']
-	]
-	.head(10)
-	.to_string()
+	].head(10)
 )
 
 
@@ -822,31 +1337,32 @@ print(
 # Visualize Pareto frontier
 fig, ax = plt.subplots(figsize=(10, 8))
 
-# All points
+# All configurations
 ax.scatter(
 	df['final_empirical_compression'],
 	df['test_accuracy'],
-	c='lightgray',
-	alpha=0.5,
+	c='gray',
+	alpha=0.3,
 	s=30,
-	label='All experiments',
+	label='All configurations',
 )
 
-# Pareto front
+# Pareto-optimal
 ax.scatter(
-	pareto_front['final_empirical_compression'],
-	pareto_front['test_accuracy'],
+	pareto_df['final_empirical_compression'],
+	pareto_df['test_accuracy'],
 	c='red',
 	s=80,
-	marker='*',
 	edgecolors='black',
 	linewidth=1,
 	label='Pareto-optimal',
+	zorder=5,
 )
 
 ax.set_xlabel('Final Empirical Compression')
 ax.set_ylabel('Test Accuracy (%)')
-ax.set_title('Accuracy-Compression Trade-off (Pareto Frontier)')
+ax.set_title('Accuracy-Compression Trade-Off (Pareto Frontier)')
+ax.set_xscale('log')
 ax.legend()
 ax.grid(True, alpha=0.3)
 
@@ -864,67 +1380,126 @@ print('\n' + '=' * 60)
 print('SECTION 10: SUMMARY')
 print('=' * 60)
 
-# Summary statistics
-summary = {
-	'Total experiments': len(df),
-	'Best accuracy': df['test_accuracy'].max(),
-	'Mean accuracy': df['test_accuracy'].mean(),
-	'Best compression': df['final_empirical_compression'].min(),
-	'Mean compression': df['final_empirical_compression'].mean(),
-}
-
 print('\n--- Summary Statistics ---')
-for k, v in summary.items():
-	print(f'{k}: {v:.4f}' if isinstance(v, float) else f'{k}: {v}')
+print(f'Total experiments: {len(df)}')
+print(f'Best accuracy: {df["test_accuracy"].max():.4f}')
+print(f'Mean accuracy: {df["test_accuracy"].mean():.4f}')
+print(f'Best compression: {df["final_empirical_compression"].min():.4f}')
+print(f'Mean compression: {df["final_empirical_compression"].mean():.4f}')
 
-# Key findings
 print('\n--- Key Findings ---')
-print(f"""
-1. CORRELATION PATTERNS:
-   - Log-beta correlation with accuracy: {df['log_beta'].corr(df['test_accuracy']):.4f}
-   - Width correlation with accuracy: {df['bottleneck_width'].corr(df['test_accuracy']):.4f}
+print(f'\n1. CORRELATION PATTERNS:')
+print(f'   - Log-beta correlation with accuracy: {log_beta_accuracy_corr:.4f}')
+print(f'   - Width correlation with accuracy: {width_accuracy_corr:.4f}')
 
-2. MODEL PERFORMANCE:
-   - Linear Regression CV R2: {cv_scores.mean():.4f}
-   - Random Forest CV R2: {cv_rf.mean():.4f}
-   - Non-linear models improve prediction by: {(cv_rf.mean() - cv_scores.mean()) * 100:.1f}%
+print(f'\n2. MODEL PERFORMANCE:')
+print(f'   - Linear Regression CV R2: {lr_results["cv_r2_mean"]:.4f}')
+print(f'   - Random Forest CV R2: {rf_results["cv_r2_mean"]:.4f}')
+improvement = (
+	(rf_results['cv_r2_mean'] - lr_results['cv_r2_mean']) / lr_results['cv_r2_mean'] * 100
+)
+print(f'   - Non-linear models improve prediction by: {improvement:.1f}%')
 
-3. OPTIMAL CONFIGURATIONS:
-   - Average log_beta in top {top_n}: {np.log10(top_configs['beta']).mean():.4f}
-   - Average width in top {top_n}: {top_configs['bottleneck_width'].mean():.1f}
+print(f'\n3. OPTIMAL CONFIGURATIONS:')
+print(f'   - Average log_beta in top 20: {np.log10(top_configs["beta"]).mean():.4f}')
+print(f'   - Average width in top 20: {top_configs["bottleneck_width"].mean():.1f}')
 
-4. PARETO-OPTIMAL SOLUTIONS: {len(pareto_front)} configurations found
+print(f'\n4. PARETO-OPTIMAL SOLUTIONS: {len(pareto_df)} configurations found')
 
-5. CLUSTER STRUCTURE: {optimal_k} distinct regimes identified
-""")
+print(f'\n5. CLUSTER STRUCTURE: {optimal_k} distinct regimes identified')
+
+print(f'\n6. STATISTICAL RELATIONSHIP ANALYSIS:')
+print(f'   --- Accuracy ---')
+print(
+	f'   - Spearman log(beta) vs accuracy: r={acc_rel["beta_spearman_corr"]:.4f}, p={acc_rel["beta_spearman_p"]:.2e}'
+)
+print(
+	f'   - Spearman width vs accuracy:     r={acc_rel["width_spearman_corr"]:.4f}, p={acc_rel["width_spearman_p"]:.2e}'
+)
+print(
+	f'   - Partial log(beta)|width:        r={acc_rel["partial_beta_corr"]:.4f}, p={acc_rel["partial_beta_p"]:.2e}'
+)
+print(
+	f'   - Partial width|log(beta):        r={acc_rel["partial_width_corr"]:.4f}, p={acc_rel["partial_width_p"]:.2e}'
+)
+anova_acc = acc_rel['anova_table']
+for effect, vals in anova_acc.items():
+	print(f'   - ANOVA {effect}: F={vals["F"]:.2f}, p={vals["p"]:.2e}')
+print(f'   - Model R2: {acc_rel["r_squared"]:.4f}')
+
+print(f'   --- Compression ---')
+print(
+	f'   - Spearman log(beta) vs compression: r={comp_rel["beta_spearman_corr"]:.4f}, p={comp_rel["beta_spearman_p"]:.2e}'
+)
+print(
+	f'   - Spearman width vs compression:     r={comp_rel["width_spearman_corr"]:.4f}, p={comp_rel["width_spearman_p"]:.2e}'
+)
+print(
+	f'   - Partial log(beta)|width:           r={comp_rel["partial_beta_corr"]:.4f}, p={comp_rel["partial_beta_p"]:.2e}'
+)
+print(
+	f'   - Partial width|log(beta):           r={comp_rel["partial_width_corr"]:.4f}, p={comp_rel["partial_width_p"]:.2e}'
+)
+anova_comp = comp_rel['anova_table']
+for effect, vals in anova_comp.items():
+	print(f'   - ANOVA {effect}: F={vals["F"]:.2f}, p={vals["p"]:.2e}')
+print(f'   - Model R2: {comp_rel["r_squared"]:.4f}')
 
 
 # %%
-# Save summary report
-report_path = OUTPUT_DIR / 'analysis_summary.txt'
-with open(report_path, 'w', encoding='utf-8') as f:
-	f.write('Numerical Analysis Summary\n')
-	f.write('=' * 60 + '\n\n')
-	f.write(f'Total experiments: {len(df)}\n')
-	f.write(f'Best accuracy: {df["test_accuracy"].max():.4f}\n')
-	f.write(f'Mean accuracy: {df["test_accuracy"].mean():.4f}\n')
-	f.write(f'Correlation (log_beta, accuracy): {df["log_beta"].corr(df["test_accuracy"]):.4f}\n')
-	f.write(
-		f'Correlation (width, accuracy): {df["bottleneck_width"].corr(df["test_accuracy"]):.4f}\n'
-	)
-	f.write(f'\nModel Performance:\n')
-	f.write(f'  Linear Regression CV R2: {cv_scores.mean():.4f}\n')
-	f.write(f'  Random Forest CV R2: {cv_rf.mean():.4f}\n')
-	f.write(f'\nPareto-optimal configurations: {len(pareto_front)}\n')
-	f.write(
-		f'Best k for clustering (silhouette): {list(k_range)[best_k_idx]} (score={silhouette_scores[best_k_idx]:.4f})\n'
-	)
-	f.write(f'\nTop configuration:\n')
-	best = df.loc[df['test_accuracy'].idxmax()]
-	f.write(f'  Model: {best["model_arch"]}\n')
-	f.write(f'  Beta: {best["beta"]}\n')
-	f.write(f'  Width: {best["bottleneck_width"]}\n')
-	f.write(f'  Accuracy: {best["test_accuracy"]:.4f}\n')
+# Save summary
+anova_acc_text = '\n'.join(
+	[
+		f'   - ANOVA {eff}: F={v["F"]:.2f}, p={v["p"]:.2e}'
+		for eff, v in acc_rel['anova_table'].items()
+	]
+)
+anova_comp_text = '\n'.join(
+	[
+		f'   - ANOVA {eff}: F={v["F"]:.2f}, p={v["p"]:.2e}'
+		for eff, v in comp_rel['anova_table'].items()
+	]
+)
 
-print(f'\nSaved: analysis_summary.txt')
+summary_text = f"""
+EfficientNet Numerical Analysis Summary
+========================================
+
+Total experiments: {len(df)}
+Best accuracy: {df['test_accuracy'].max():.4f}
+Mean accuracy: {df['test_accuracy'].mean():.4f}
+Best compression: {df['final_empirical_compression'].min():.4f}
+Mean compression: {df['final_empirical_compression'].mean():.4f}
+
+Key Findings:
+1. Log-beta correlation with accuracy: {log_beta_accuracy_corr:.4f}
+2. Width correlation with accuracy: {width_accuracy_corr:.4f}
+3. Linear Regression CV R2: {lr_results['cv_r2_mean']:.4f}
+4. Random Forest CV R2: {rf_results['cv_r2_mean']:.4f}
+5. Pareto-optimal configurations: {len(pareto_df)}
+6. Clusters identified: {optimal_k}
+
+Statistical Relationship Analysis:
+  Accuracy:
+  - Spearman log(beta) vs accuracy: r={acc_rel['beta_spearman_corr']:.4f}, p={acc_rel['beta_spearman_p']:.2e}
+  - Spearman width vs accuracy:     r={acc_rel['width_spearman_corr']:.4f}, p={acc_rel['width_spearman_p']:.2e}
+  - Partial log(beta)|width:        r={acc_rel['partial_beta_corr']:.4f}, p={acc_rel['partial_beta_p']:.2e}
+  - Partial width|log(beta):        r={acc_rel['partial_width_corr']:.4f}, p={acc_rel['partial_width_p']:.2e}
+{anova_acc_text}
+  - Model R2: {acc_rel['r_squared']:.4f}
+
+  Compression:
+  - Spearman log(beta) vs compression: r={comp_rel['beta_spearman_corr']:.4f}, p={comp_rel['beta_spearman_p']:.2e}
+  - Spearman width vs compression:     r={comp_rel['width_spearman_corr']:.4f}, p={comp_rel['width_spearman_p']:.2e}
+  - Partial log(beta)|width:           r={comp_rel['partial_beta_corr']:.4f}, p={comp_rel['partial_beta_p']:.2e}
+  - Partial width|log(beta):           r={comp_rel['partial_width_corr']:.4f}, p={comp_rel['partial_width_p']:.2e}
+{anova_comp_text}
+  - Model R2: {comp_rel['r_squared']:.4f}
+"""
+
+with open(OUTPUT_DIR / 'analysis_summary.txt', 'w', encoding='utf-8') as f:
+	f.write(summary_text)
+
+print(f'\n\nSaved: analysis_summary.txt')
+
 print(f'\nAnalysis complete! Results saved to: {OUTPUT_DIR}')

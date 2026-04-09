@@ -1,25 +1,30 @@
 # %%
 """
-Analysis of grid search experiment results.
+Analysis of EfficientNet grid search experiment results.
 
-This script loads results from results/grid_search/grid_search_results_final.json
+This script loads results from results/efficientnet/grid_search_results_final.json
 and performs comprehensive analysis:
 - Statistics by models and hyperparameters
 - Visualizations (heatmaps, plots)
 - Finding best configurations
 """
 
-import json
-import os
 from pathlib import Path
 import warnings
 
-from matplotlib.collections import LineCollection
 from matplotlib.colors import LogNorm, PowerNorm
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
+from experiments.analysis import (
+	load_with_baseline,
+	plot_accuracy_vs_beta_with_gradient,
+	plot_compression_vs_beta_with_gradient,
+	plot_metric_vs_beta_error_bars,
+	save_and_close,
+)
 
 # Set plot style
 sns.set_style('whitegrid')
@@ -31,78 +36,10 @@ BOTTLENECK_CMAP = 'plasma'
 
 
 # %%
-# Helper function to plot lines with gradient color based on bottleneck width
-def plot_accuracy_vs_beta_with_gradient(ax, data, title, show_legend=True):
-	"""
-	Plot accuracy vs beta with lines colored by bottleneck width using gradient colormap.
-
-	Parameters:
-	-----------
-	ax : matplotlib axis
-	    The axis to plot on
-	data : pandas DataFrame
-	    Data containing 'beta', 'test_accuracy', and 'bottleneck_width' columns
-	title : str
-	    Plot title
-	show_legend : bool
-	    Whether to show the legend
-	"""
-	widths = sorted(data['bottleneck_width'].unique())
-	norm = LogNorm(min(widths), max(widths))
-	cmap = plt.get_cmap(BOTTLENECK_CMAP)
-
-	all_betas = []
-	all_accuracies = []
-	line_handles = []
-
-	for width in widths:
-		subset = data[data['bottleneck_width'] == width].groupby('beta')['test_accuracy'].mean()
-		points = np.array([subset.index.values, subset.values]).T.reshape(-1, 1, 2)
-		segments = np.concatenate([points[:-1], points[1:]], axis=1)
-
-		lc = LineCollection(segments, cmap=cmap, norm=norm, linewidth=2.5)
-		lc.set_array(np.full(len(segments), width))
-		ax.add_collection(lc)
-
-		all_betas.extend(subset.index.values)
-		all_accuracies.extend(subset.values)
-
-	# Create legend handles with colors matching each bottleneck width
-	for width in widths:
-		color = cmap(norm(width))
-		line_handles.append(
-			plt.Line2D([0], [0], color=color, linewidth=2.5, label=f'Width: {width}')
-		)
-
-	# Add legend instead of colorbar
-	if show_legend and line_handles:
-		ax.legend(handles=line_handles, title='Bottleneck Width', loc='best')
-
-	ax.set_xscale('log')
-	ax.set_xlabel('Beta (log scale)')
-	ax.set_ylabel('Test Accuracy (%)')
-	ax.set_title(title)
-	ax.grid(True, alpha=0.3)
-
-	# Set axis limits based on data
-	if all_betas and all_accuracies:
-		ax.set_xlim(min(all_betas) * 0.9, max(all_betas) * 1.1)
-		ax.set_ylim(min(all_accuracies) - 1, max(all_accuracies) + 1)
-
-
-def get_notebook_dir():
-	"""Get the directory containing the current notebook or script."""
-	try:
-		# Works in .py files
-		return Path(__file__).parent.resolve()
-	except NameError:
-		return Path(os.getcwd()).resolve()
-
-
-# %%
 # Data paths
-PROJECT_ROOT = get_notebook_dir().parent
+PROJECT_ROOT = Path(__file__).parent.parent
 RESULTS_PATH = PROJECT_ROOT / 'results' / 'efficientnet' / 'grid_search_results_final.json'
+BASELINE_PATH = PROJECT_ROOT / 'results' / 'baseline' / 'grid_search_results_final.json'
 OUTPUT_DIR = PROJECT_ROOT / 'reports' / 'efficientnet' / 'analysis'
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -110,12 +47,9 @@ print(f'Loading data from: results/efficientnet/grid_search_results_final.json')
 print(f'Results will be saved to: results/efficientnet/analysis/')
 
 # %%
-# Load data
-with open(RESULTS_PATH, 'r', encoding='utf-8') as f:
-	raw_data = json.load(f)
-
-df = pd.DataFrame(raw_data)
-print(f'Loaded {len(df)} experiments')
+# Load data with baseline (filtered for EfficientNet models)
+efficientnet_models = ['efficientnet_b0', 'efficientnet_b1', 'efficientnet_b2']
+df = load_with_baseline(RESULTS_PATH, BASELINE_PATH, model_filter=efficientnet_models)
 print(f'\nColumns: {list(df.columns)}')
 
 # %%
@@ -189,154 +123,92 @@ beta_stats = df.groupby('beta').agg(
 )
 print(beta_stats.round(2))
 
+
+# %%
+# Helper function to create heatmap with proper norm handling
+def _make_heatmap(df, values, filename, fmt='.1f', norm_type=None, title_suffix=''):
+	"""Create heatmap with automatic norm type handling."""
+	try:
+		# Filter out infinite values before pivoting
+		df_clean = df.replace([np.inf, -np.inf], np.nan).dropna(subset=[values])
+		if len(df_clean) == 0:
+			print(f'  Skipping {filename}: no valid data')
+			return
+		pivot = df_clean.pivot_table(
+			values=values,
+			index='bottleneck_width',
+			columns='beta',
+			aggfunc='mean',
+		)
+		finite = pivot.values[np.isfinite(pivot.values)]
+		if len(finite) == 0:
+			print(f'  Skipping {filename}: no finite values in pivot')
+			return
+		vmin = np.min(finite)
+		vmax = np.max(finite)
+
+		if vmin <= 0:
+			vmin = vmin * 0.9 if vmin < 0 else vmax * 0.01
+
+		norm = None
+		if norm_type == 'log':
+			norm = LogNorm(vmin=vmin, vmax=vmax)
+		elif norm_type == 'power':
+			norm = PowerNorm(gamma=1.5, vmin=vmin, vmax=vmax)
+
+		fig, ax = plt.subplots(figsize=(10, 6))
+		sns.heatmap(
+			pivot,
+			annot=True,
+			fmt=fmt,
+			cmap=BOTTLENECK_CMAP,
+			ax=ax,
+			norm=norm,
+			cbar_kws={'label': values.replace('_', ' ').title()},
+		)
+		ax.set_title(
+			f'Average {values.replace("_", " ").title()}: Bottleneck Width x Beta{title_suffix}'
+		)
+		ax.set_xlabel('Beta')
+		ax.set_ylabel('Bottleneck Width')
+		plt.tight_layout()
+		fig.savefig(OUTPUT_DIR / filename, dpi=150)
+		print(f'Saved: {filename}')
+		plt.close('all')
+	except Exception as e:
+		print(f'  Warning: Could not create {filename}: {e}')
+		plt.close('all')
+
+
 # %%
 # Building heatmaps
 print('BUILDING PLOTS')
-beta_filtered = df.copy()
-fig, ax = plt.subplots(figsize=(10, 6))
-pivot_acc = beta_filtered.pivot_table(
-	values='test_accuracy',
-	index='bottleneck_width',
-	columns='beta',
-	aggfunc='mean',
-)
-sns.heatmap(
-	pivot_acc,
-	annot=True,
-	fmt='.1f',
-	cmap=BOTTLENECK_CMAP,
-	ax=ax,
-	cbar_kws={'label': 'Test Accuracy (%)'},
-)
-ax.set_title('Average Accuracy: Bottleneck Width x Beta')
-ax.set_xlabel('Beta')
-ax.set_ylabel('Bottleneck Width')
-plt.tight_layout()
-plt.savefig(OUTPUT_DIR / 'heatmap_accuracy_width_beta.png', dpi=150)
-print(f'Saved: heatmap_accuracy_width_beta.png')
-plt.show()
 
-# %%
-# 2. Heatmap: bottleneck_width x beta -> final_val_loss
-fig, ax = plt.subplots(figsize=(10, 6))
-pivot_loss = beta_filtered.pivot_table(
-	values='final_val_loss',
-	index='bottleneck_width',
-	columns='beta',
-	aggfunc='mean',
-)
-# Filter out infinite values for colorbar scale
-finite_values = pivot_loss.values[np.isfinite(pivot_loss.values)]
-vmin_loss = np.min(finite_values)
-vmax_loss = np.max(finite_values)
-
-# Ensure vmin is positive for LogNorm
-if vmin_loss <= 0:
-	vmin_loss = vmin_loss * 0.9 if vmin_loss < 0 else vmax_loss * 0.01
-
-# Use LogNorm for better handling of outliers - compresses high values more aggressively
-norm_loss = LogNorm(vmin=vmin_loss, vmax=vmax_loss)
-
-sns.heatmap(
-	pivot_loss,
-	annot=True,
+_make_heatmap(df, 'test_accuracy', 'heatmap_accuracy_width_beta.png', fmt='.1f')
+_make_heatmap(df, 'final_val_loss', 'heatmap_loss_width_beta.png', fmt='.3f', norm_type='log')
+_make_heatmap(
+	df,
+	'final_empirical_compression',
+	'heatmap_compression_width_beta.png',
 	fmt='.3f',
-	cmap=BOTTLENECK_CMAP,
-	ax=ax,
-	norm=norm_loss,
-	cbar_kws={'label': 'Validation Loss'},
+	norm_type='power',
 )
-ax.set_title('Average Validation Loss: Bottleneck Width x Beta')
-ax.set_xlabel('Beta')
-ax.set_ylabel('Bottleneck Width')
-plt.tight_layout()
-plt.savefig(OUTPUT_DIR / 'heatmap_loss_width_beta.png', dpi=150)
-print(f'Saved: heatmap_loss_width_beta.png')
-plt.show()
-
-# %%
-# 3. Heatmap: bottleneck_width x beta -> final_empirical_compression
-fig, ax = plt.subplots(figsize=(10, 6))
-pivot_comp = beta_filtered.pivot_table(
-	values='final_empirical_compression',
-	index='bottleneck_width',
-	columns='beta',
-	aggfunc='mean',
-)
-# Filter out infinite values for colorbar scale
-finite_comp = pivot_comp.values[np.isfinite(pivot_comp.values)]
-vmin_comp = np.min(finite_comp)
-vmax_comp = np.max(finite_comp)
-
-# Ensure vmin is positive for PowerNorm
-if vmin_comp <= 0:
-	vmin_comp = vmin_comp * 0.9 if vmin_comp < 0 else vmax_comp * 0.01
-
-# Use PowerNorm with gamma=1.5 to expand differences in higher values (8-9)
-# while still showing outliers (4-5) with compressed color range
-norm_comp = PowerNorm(gamma=1.5, vmin=vmin_comp, vmax=vmax_comp)
-
-sns.heatmap(
-	pivot_comp,
-	annot=True,
+_make_heatmap(
+	df,
+	'final_effective_capacity_utilization',
+	'heatmap_capacity_width_beta.png',
 	fmt='.3f',
-	cmap=BOTTLENECK_CMAP,
-	ax=ax,
-	norm=norm_comp,
-	cbar_kws={'label': 'Empirical Compression'},
+	norm_type='log',
 )
-ax.set_title('Average Empirical Compression: Bottleneck Width x Beta')
-ax.set_xlabel('Beta')
-ax.set_ylabel('Bottleneck Width')
-plt.tight_layout()
-plt.savefig(OUTPUT_DIR / 'heatmap_compression_width_beta.png', dpi=150)
-print(f'Saved: heatmap_compression_width_beta.png')
-plt.show()
 
-# %%
-# 4. Heatmap: bottleneck_width x beta -> final_effective_capacity_utilization
-fig, ax = plt.subplots(figsize=(10, 6))
-pivot_cap = beta_filtered.pivot_table(
-	values='final_effective_capacity_utilization',
-	index='bottleneck_width',
-	columns='beta',
-	aggfunc='mean',
-)
-# Filter out infinite values for colorbar scale
-finite_cap = pivot_cap.values[np.isfinite(pivot_cap.values)]
-vmin_cap = np.min(finite_cap)
-vmax_cap = np.max(finite_cap)
-
-# Ensure vmin is positive for LogNorm
-if vmin_cap <= 0:
-	vmin_cap = vmin_cap * 0.9 if vmin_cap < 0 else vmax_cap * 0.01
-
-norm_cap = LogNorm(vmin=vmin_cap, vmax=vmax_cap)
-
-sns.heatmap(
-	pivot_cap,
-	annot=True,
-	fmt='.3f',
-	cmap=BOTTLENECK_CMAP,
-	ax=ax,
-	norm=norm_cap,
-	cbar_kws={'label': 'Capacity Utilization'},
-)
-ax.set_title('Average Effective Capacity Utilization: Bottleneck Width x Beta')
-ax.set_xlabel('Beta')
-ax.set_ylabel('Bottleneck Width')
-plt.tight_layout()
-plt.savefig(OUTPUT_DIR / 'heatmap_capacity_width_beta.png', dpi=150)
-print(f'Saved: heatmap_capacity_width_beta.png')
-plt.show()
 
 # %%
 # 5. Scatter plot: Empirical Compression vs Capacity Utilization (color = test accuracy)
 fig, ax = plt.subplots(figsize=(10, 6))
 scatter = ax.scatter(
-	beta_filtered['final_empirical_compression'],
-	beta_filtered['final_effective_capacity_utilization'],
-	c=beta_filtered['test_accuracy'],
+	df['final_empirical_compression'],
+	df['final_effective_capacity_utilization'],
+	c=df['test_accuracy'],
 	cmap=BOTTLENECK_CMAP,
 	alpha=0.6,
 	s=50,
@@ -352,27 +224,31 @@ ax.grid(True, alpha=0.3, which='both')
 cbar = plt.colorbar(scatter)
 cbar.set_label('Test Accuracy (%)')
 plt.tight_layout()
-plt.savefig(OUTPUT_DIR / 'scatter_acc_compression_capacity.png', dpi=150)
+fig.savefig(OUTPUT_DIR / 'scatter_acc_compression_capacity.png', dpi=150)
 print(f'Saved: scatter_acc_compression_capacity.png')
-plt.show()
+plt.close('all')
+
 
 # %%
 # 6. Scatter plot: Empirical Compression vs Test Accuracy (color = beta, size = bottleneck width)
 fig, ax = plt.subplots(figsize=(10, 6))
-beta_min = beta_filtered['beta'].min()
-beta_max = beta_filtered['beta'].max()
-# Ensure beta_min is positive for LogNorm
-if beta_min <= 0:
-	beta_min = beta_min * 0.9 if beta_min < 0 else beta_max * 0.01
+# Handle beta=0 values for LogNorm
+beta_positive = df[df['beta'] > 0]['beta']
+if len(beta_positive) > 0:
+	beta_min, beta_max = beta_positive.min(), beta_positive.max()
+	scatter_color = df['beta'].replace(0, np.nan)
+else:
+	beta_min, beta_max = 1e-8, 1
+	scatter_color = df['beta'].replace(0, np.nan)
 
 # Scale size by log of bottleneck width
-widths = beta_filtered['bottleneck_width']
-sizes = np.log(widths) * 20  # Scale factor for visibility
+widths = df['bottleneck_width']
+sizes = np.log(widths) * 20
 
 scatter = ax.scatter(
-	beta_filtered['final_empirical_compression'],
-	beta_filtered['test_accuracy'],
-	c=beta_filtered['beta'],
+	df['final_empirical_compression'],
+	df['test_accuracy'],
+	c=scatter_color,
 	norm=LogNorm(beta_min, beta_max),
 	cmap=BOTTLENECK_CMAP,
 	s=sizes,
@@ -390,30 +266,92 @@ cbar.set_label('Beta (log scale)')
 
 # Add size legend outside the plot near colorbar
 unique_widths = sorted(widths.unique())
-legend_sizes = [np.log(w) * 20 for w in unique_widths]
 legend_handles = [
-	plt.scatter([], [], s=s, color='gray', alpha=0.5, edgecolors='black', label=f'Width: {w}')
-	for w, s in zip(unique_widths, legend_sizes)
+	plt.scatter(
+		[], [], s=np.log(w) * 20, color='gray', alpha=0.5, edgecolors='black', label=f'Width: {w}'
+	)
+	for w in unique_widths
 ]
 ax.legend(
 	handles=legend_handles, title='Bottleneck Width', loc='center left', bbox_to_anchor=(1.2, 0.5)
 )
 
 plt.tight_layout()
-plt.savefig(OUTPUT_DIR / 'scatter_acc_compression.png', dpi=150)
+fig.savefig(OUTPUT_DIR / 'scatter_acc_compression.png', dpi=150)
 print(f'Saved: scatter_acc_compression.png')
-plt.show()
+plt.close('all')
+
 
 # %%
 # 7. Accuracy vs beta with gradient color based on bottleneck width (unified style)
 fig, ax = plt.subplots(figsize=(10, 6))
+# Load baseline data, filtered to only models present in main results
+df_baseline_raw = load_with_baseline(RESULTS_PATH, BASELINE_PATH, model_filter=efficientnet_models)
+models_in_results = set(df['model_arch'].unique())
+df_baseline_all = df_baseline_raw[df_baseline_raw['model_arch'].isin(models_in_results)]
+df_baseline_only = df_baseline_all[df_baseline_all['beta'] == 0]
+# Remove baseline from df for plotting (it's shown separately)
+df_no_baseline = df[df['beta'] > 0]
 plot_accuracy_vs_beta_with_gradient(
-	ax, beta_filtered, 'Accuracy vs Beta (color = Bottleneck Width)'
+	ax,
+	df_no_baseline,
+	'Accuracy vs Beta (color = Bottleneck Width)',
+	baseline_data=df_baseline_only,
 )
 plt.tight_layout()
-plt.savefig(OUTPUT_DIR / 'accuracy_vs_beta.png', dpi=150)
+fig.savefig(OUTPUT_DIR / 'accuracy_vs_beta.png', dpi=150)
 print(f'Saved: accuracy_vs_beta.png')
-plt.show()
+plt.close('all')
+
+
+# %%
+# 7b. Empirical compression vs beta with gradient color based on bottleneck width
+fig, ax = plt.subplots(figsize=(10, 6))
+plot_compression_vs_beta_with_gradient(
+	ax,
+	df_no_baseline,
+	'Empirical Compression vs Beta (color = Bottleneck Width)',
+	baseline_data=df_baseline_only,
+)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'compression_vs_beta.png', dpi=150)
+print(f'Saved: compression_vs_beta.png')
+plt.close('all')
+
+
+# %%
+# 7c. Error bars: Accuracy vs beta (aggregated across widths)
+fig, ax = plt.subplots(figsize=(10, 6))
+plot_metric_vs_beta_error_bars(
+	ax,
+	df_no_baseline,
+	'test_accuracy',
+	'Test Accuracy vs Beta (mean ± std across widths and seeds)',
+	'Test Accuracy (%)',
+	baseline_data=df_baseline_only,
+)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'accuracy_vs_beta_errorbars.png', dpi=150)
+print(f'Saved: accuracy_vs_beta_errorbars.png')
+plt.close('all')
+
+
+# %%
+# 7d. Error bars: Compression vs beta (aggregated across widths)
+fig, ax = plt.subplots(figsize=(10, 6))
+plot_metric_vs_beta_error_bars(
+	ax,
+	df_no_baseline,
+	'final_empirical_compression',
+	'Empirical Compression vs Beta (mean ± std across widths and seeds)',
+	'Empirical Compression',
+	baseline_data=df_baseline_only,
+)
+plt.tight_layout()
+fig.savefig(OUTPUT_DIR / 'compression_vs_beta_errorbars.png', dpi=150)
+print(f'Saved: compression_vs_beta_errorbars.png')
+plt.close('all')
+
 
 # %%
 # 4. Accuracy distribution by model
@@ -443,9 +381,10 @@ ax.set_title('Accuracy Distribution by Architecture')
 plt.suptitle('')  # Remove automatic title
 plt.tight_layout()
 
-plt.savefig(OUTPUT_DIR / 'accuracy_distribution.png', dpi=150)
+fig.savefig(OUTPUT_DIR / 'accuracy_distribution.png', dpi=150)
 print(f'Saved: accuracy_distribution.png')
-plt.show()
+plt.close('all')
+
 
 # %%
 # 5. Train loss vs val loss relationship
@@ -466,20 +405,30 @@ ax.set_yscale('log')
 cbar = plt.colorbar(scatter)
 cbar.set_label('Test Accuracy (%)')
 plt.tight_layout()
-plt.savefig(OUTPUT_DIR / 'train_vs_val_loss.png', dpi=150)
+fig.savefig(OUTPUT_DIR / 'train_vs_val_loss.png', dpi=150)
 print(f'Saved: train_vs_val_loss.png')
-plt.show()
+plt.close('all')
+
 
 # %%
 # 6. Compression metrics analysis
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
 ax = axes[0]
+# Handle beta=0 values for LogNorm
+beta_vals = df[df['beta'] > 0]['beta']
+if len(beta_vals) > 0:
+	beta_min, beta_max = beta_vals.min(), beta_vals.max()
+	scatter_c = df['beta'].replace(0, np.nan)
+else:
+	beta_min, beta_max = 1e-8, 1
+	scatter_c = df['beta'].replace(0, np.nan)
+
 scatter = ax.scatter(
 	df['final_empirical_compression'],
 	df['test_accuracy'],
-	c=df['beta'],
-	norm=LogNorm(df['beta'].min(), df['beta'].max()),
+	c=scatter_c,
+	norm=LogNorm(beta_min, beta_max),
 	cmap=BOTTLENECK_CMAP,
 	alpha=0.6,
 	s=50,
@@ -509,9 +458,10 @@ cbar.set_label('Bottleneck Width (log scale)')
 ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig(OUTPUT_DIR / 'compression_metrics.png', dpi=150)
+fig.savefig(OUTPUT_DIR / 'compression_metrics.png', dpi=150)
 print(f'Saved: compression_metrics.png')
-plt.show()
+plt.close('all')
+
 
 # %%
 # 7. Analysis by model architecture - separate heatmaps and plots
@@ -519,234 +469,181 @@ print('ANALYSIS BY MODEL ARCHITECTURE')
 
 for model_arch in df['model_arch'].unique():
 	model_df = df[df['model_arch'] == model_arch].copy()
-	model_df_filtered = model_df.copy()
 
 	print(f'\n--- {model_arch} ---')
 	print(f'  Experiments: {len(model_df)}')
 	print(f'  Mean accuracy: {model_df["test_accuracy"].mean():.2f}%')
 	print(f'  Best accuracy: {model_df["test_accuracy"].max():.2f}%')
 
-	# Heatmap for this architecture
-	if len(model_df_filtered) > 0:
-		# 1. Heatmap: Accuracy
-		fig, ax = plt.subplots(figsize=(10, 6))
-		pivot_acc = model_df_filtered.pivot_table(
-			values='test_accuracy',
-			index='bottleneck_width',
-			columns='beta',
-			aggfunc='mean',
+	# Heatmaps for this architecture
+	_make_heatmap(
+		model_df,
+		'test_accuracy',
+		f'heatmap_accuracy_{model_arch}.png',
+		fmt='.1f',
+		title_suffix=f' ({model_arch})',
+	)
+	_make_heatmap(
+		model_df,
+		'final_val_loss',
+		f'heatmap_loss_{model_arch}.png',
+		fmt='.3f',
+		norm_type='log',
+		title_suffix=f' ({model_arch})',
+	)
+	_make_heatmap(
+		model_df,
+		'final_empirical_compression',
+		f'heatmap_compression_{model_arch}.png',
+		fmt='.3f',
+		norm_type='power',
+		title_suffix=f' ({model_arch})',
+	)
+	_make_heatmap(
+		model_df,
+		'final_effective_capacity_utilization',
+		f'heatmap_capacity_{model_arch}.png',
+		fmt='.3f',
+		norm_type='log',
+		title_suffix=f' ({model_arch})',
+	)
+
+	# Scatter: Compression vs Capacity (color = accuracy)
+	fig, ax = plt.subplots(figsize=(10, 6))
+	scatter = ax.scatter(
+		model_df['final_empirical_compression'],
+		model_df['final_effective_capacity_utilization'],
+		c=model_df['test_accuracy'],
+		cmap=BOTTLENECK_CMAP,
+		alpha=0.6,
+		s=50,
+		edgecolors='black',
+		linewidth=0.5,
+	)
+	ax.set_xlabel('Final Empirical Compression')
+	ax.set_ylabel('Final Effective Capacity Utilization')
+	ax.set_title(f'Test Accuracy: Compression vs Capacity ({model_arch})')
+	ax.set_xscale('log')
+	ax.set_yscale('log')
+	ax.grid(True, alpha=0.3, which='both')
+	cbar = plt.colorbar(scatter)
+	cbar.set_label('Test Accuracy (%)')
+	plt.tight_layout()
+	fig.savefig(OUTPUT_DIR / f'scatter_acc_compression_capacity_{model_arch}.png', dpi=150)
+	print(f'  Saved: scatter_acc_compression_capacity_{model_arch}.png')
+	plt.close('all')
+
+	# Scatter: Empirical Compression vs Test Accuracy (color = beta, size = width)
+	fig, ax = plt.subplots(figsize=(10, 6))
+	beta_positive = model_df[model_df['beta'] > 0]['beta']
+	if len(beta_positive) > 0:
+		b_min, b_max = beta_positive.min(), beta_positive.max()
+		sc = model_df['beta'].replace(0, np.nan)
+	else:
+		b_min, b_max = 1e-8, 1
+		sc = model_df['beta'].replace(0, np.nan)
+
+	w = model_df['bottleneck_width']
+	sz = np.log(w) * 20
+
+	scatter = ax.scatter(
+		model_df['final_empirical_compression'],
+		model_df['test_accuracy'],
+		c=sc,
+		norm=LogNorm(b_min, b_max),
+		cmap=BOTTLENECK_CMAP,
+		s=sz,
+		alpha=0.6,
+		edgecolors='black',
+		linewidth=0.5,
+	)
+	ax.set_xlabel('Final Empirical Compression')
+	ax.set_ylabel('Test Accuracy (%)')
+	ax.set_title(f'Test Accuracy vs Empirical Compression ({model_arch})')
+	ax.set_xscale('log')
+	ax.grid(True, alpha=0.3, which='both')
+	cbar = plt.colorbar(scatter)
+	cbar.set_label('Beta (log scale)')
+
+	uw = sorted(w.unique())
+	lh = [
+		plt.scatter(
+			[],
+			[],
+			s=np.log(x) * 20,
+			color='gray',
+			alpha=0.5,
+			edgecolors='black',
+			label=f'Width: {x}',
 		)
-		sns.heatmap(
-			pivot_acc,
-			annot=True,
-			fmt='.1f',
-			cmap=BOTTLENECK_CMAP,
-			ax=ax,
-			cbar_kws={'label': 'Test Accuracy (%)'},
-		)
-		ax.set_title(f'Average Accuracy: Bottleneck Width x Beta ({model_arch})')
-		ax.set_xlabel('Beta')
-		ax.set_ylabel('Bottleneck Width')
-		plt.tight_layout()
-		filename = f'heatmap_accuracy_{model_arch}.png'
-		plt.savefig(OUTPUT_DIR / filename, dpi=150)
-		print(f'  Saved: {filename}')
-		plt.show()
+		for x in uw
+	]
+	ax.legend(handles=lh, title='Bottleneck Width', loc='center left', bbox_to_anchor=(1.2, 0.5))
 
-		# 2. Heatmap: Validation Loss
-		fig, ax = plt.subplots(figsize=(10, 6))
-		pivot_loss = model_df_filtered.pivot_table(
-			values='final_val_loss',
-			index='bottleneck_width',
-			columns='beta',
-			aggfunc='mean',
-		)
-		finite_loss = pivot_loss.values[np.isfinite(pivot_loss.values)]
-		if len(finite_loss) > 0:
-			vmin_loss = np.min(finite_loss)
-			vmax_loss = np.max(finite_loss)
-			# Ensure vmin is positive for LogNorm
-			if vmin_loss <= 0:
-				vmin_loss = vmin_loss * 0.9 if vmin_loss < 0 else vmax_loss * 0.01
-			norm_loss = LogNorm(vmin=vmin_loss, vmax=vmax_loss)
-			sns.heatmap(
-				pivot_loss,
-				annot=True,
-				fmt='.3f',
-				cmap=BOTTLENECK_CMAP,
-				ax=ax,
-				norm=norm_loss,
-				cbar_kws={'label': 'Validation Loss'},
-			)
-		ax.set_title(f'Average Validation Loss: Bottleneck Width x Beta ({model_arch})')
-		ax.set_xlabel('Beta')
-		ax.set_ylabel('Bottleneck Width')
-		plt.tight_layout()
-		filename = f'heatmap_loss_{model_arch}.png'
-		plt.savefig(OUTPUT_DIR / filename, dpi=150)
-		print(f'  Saved: {filename}')
-		plt.show()
+	plt.tight_layout()
+	fig.savefig(OUTPUT_DIR / f'scatter_acc_compression_{model_arch}.png', dpi=150)
+	print(f'  Saved: scatter_acc_compression_{model_arch}.png')
+	plt.close('all')
 
-		# 3. Heatmap: Empirical Compression
-		fig, ax = plt.subplots(figsize=(10, 6))
-		pivot_comp = model_df_filtered.pivot_table(
-			values='final_empirical_compression',
-			index='bottleneck_width',
-			columns='beta',
-			aggfunc='mean',
-		)
-		finite_comp = pivot_comp.values[np.isfinite(pivot_comp.values)]
-		if len(finite_comp) > 0:
-			vmin_comp = np.min(finite_comp)
-			vmax_comp = np.max(finite_comp)
-			# Ensure vmin is positive for PowerNorm
-			if vmin_comp <= 0:
-				vmin_comp = vmin_comp * 0.9 if vmin_comp < 0 else vmax_comp * 0.01
-			norm_comp = PowerNorm(gamma=1.5, vmin=vmin_comp, vmax=vmax_comp)
-			sns.heatmap(
-				pivot_comp,
-				annot=True,
-				fmt='.3f',
-				cmap=BOTTLENECK_CMAP,
-				ax=ax,
-				norm=norm_comp,
-				cbar_kws={'label': 'Empirical Compression'},
-			)
-		ax.set_title(f'Average Empirical Compression: Bottleneck Width x Beta ({model_arch})')
-		ax.set_xlabel('Beta')
-		ax.set_ylabel('Bottleneck Width')
-		plt.tight_layout()
-		filename = f'heatmap_compression_{model_arch}.png'
-		plt.savefig(OUTPUT_DIR / filename, dpi=150)
-		print(f'  Saved: {filename}')
-		plt.show()
+	# Accuracy vs beta with gradient color
+	fig, ax = plt.subplots(figsize=(10, 6))
+	# Get baseline for this architecture
+	baseline_arch = df_baseline_only[df_baseline_only['model_arch'] == model_arch]
+	model_df_no_bl = model_df[model_df['beta'] > 0]
+	plot_accuracy_vs_beta_with_gradient(
+		ax,
+		model_df_no_bl,
+		f'Accuracy vs Beta for {model_arch} (color = Bottleneck Width)',
+		baseline_data=baseline_arch,
+	)
+	plt.tight_layout()
+	fig.savefig(OUTPUT_DIR / f'accuracy_vs_beta_{model_arch}.png', dpi=150)
+	print(f'  Saved: accuracy_vs_beta_{model_arch}.png')
+	plt.close('all')
 
-		# 4. Heatmap: Capacity Utilization
-		fig, ax = plt.subplots(figsize=(10, 6))
-		pivot_cap = model_df_filtered.pivot_table(
-			values='final_effective_capacity_utilization',
-			index='bottleneck_width',
-			columns='beta',
-			aggfunc='mean',
-		)
-		finite_cap = pivot_cap.values[np.isfinite(pivot_cap.values)]
-		if len(finite_cap) > 0:
-			vmin_cap = np.min(finite_cap)
-			vmax_cap = np.max(finite_cap)
-			# Ensure vmin is positive for LogNorm
-			if vmin_cap <= 0:
-				vmin_cap = vmin_cap * 0.9 if vmin_cap < 0 else vmax_cap * 0.01
-			norm_cap = LogNorm(vmin=vmin_cap, vmax=vmax_cap)
-			sns.heatmap(
-				pivot_cap,
-				annot=True,
-				fmt='.3f',
-				cmap=BOTTLENECK_CMAP,
-				ax=ax,
-				norm=norm_cap,
-				cbar_kws={'label': 'Capacity Utilization'},
-			)
-		ax.set_title(f'Average Capacity Utilization: Bottleneck Width x Beta ({model_arch})')
-		ax.set_xlabel('Beta')
-		ax.set_ylabel('Bottleneck Width')
-		plt.tight_layout()
-		filename = f'heatmap_capacity_{model_arch}.png'
-		plt.savefig(OUTPUT_DIR / filename, dpi=150)
-		print(f'  Saved: {filename}')
-		plt.show()
+	# Empirical compression vs beta with gradient color
+	fig, ax = plt.subplots(figsize=(10, 6))
+	plot_compression_vs_beta_with_gradient(
+		ax,
+		model_df_no_bl,
+		f'Empirical Compression vs Beta for {model_arch} (color = Bottleneck Width)',
+		baseline_data=baseline_arch,
+	)
+	plt.tight_layout()
+	fig.savefig(OUTPUT_DIR / f'compression_vs_beta_{model_arch}.png', dpi=150)
+	print(f'  Saved: compression_vs_beta_{model_arch}.png')
+	plt.close('all')
 
-		# 5. Scatter: Compression vs Capacity (color = accuracy)
-		if len(model_df_filtered) > 0:
-			fig, ax = plt.subplots(figsize=(10, 6))
-			scatter = ax.scatter(
-				model_df_filtered['final_empirical_compression'],
-				model_df_filtered['final_effective_capacity_utilization'],
-				c=model_df_filtered['test_accuracy'],
-				cmap=BOTTLENECK_CMAP,
-				alpha=0.6,
-				s=50,
-				edgecolors='black',
-				linewidth=0.5,
-			)
-			ax.set_xlabel('Final Empirical Compression')
-			ax.set_ylabel('Final Effective Capacity Utilization')
-			ax.set_title(f'Test Accuracy: Compression vs Capacity ({model_arch})')
-			ax.set_xscale('log')
-			ax.set_yscale('log')
-			ax.grid(True, alpha=0.3, which='both')
-			cbar = plt.colorbar(scatter)
-			cbar.set_label('Test Accuracy (%)')
-			plt.tight_layout()
-			filename = f'scatter_acc_compression_capacity_{model_arch}.png'
-			plt.savefig(OUTPUT_DIR / filename, dpi=150)
-			print(f'  Saved: {filename}')
-			plt.show()
+	# Error bars: Accuracy vs beta (aggregated across widths)
+	fig, ax = plt.subplots(figsize=(10, 6))
+	plot_metric_vs_beta_error_bars(
+		ax,
+		model_df_no_bl,
+		'test_accuracy',
+		f'Test Accuracy vs Beta for {model_arch} (mean ± std)',
+		'Test Accuracy (%)',
+		baseline_data=baseline_arch,
+	)
+	plt.tight_layout()
+	fig.savefig(OUTPUT_DIR / f'accuracy_vs_beta_errorbars_{model_arch}.png', dpi=150)
+	print(f'  Saved: accuracy_vs_beta_errorbars_{model_arch}.png')
+	plt.close('all')
 
-		# 6. Scatter: Empirical Compression vs Test Accuracy (color = beta, size = width)
-		if len(model_df_filtered) > 0:
-			fig, ax = plt.subplots(figsize=(10, 6))
-			beta_vals = model_df_filtered['beta']
-			beta_min = beta_vals.min()
-			beta_max = beta_vals.max()
-			# Ensure beta_min is positive for LogNorm
-			if beta_min <= 0:
-				beta_min = beta_min * 0.9 if beta_min < 0 else beta_max * 0.01
+	# Error bars: Compression vs beta (aggregated across widths)
+	fig, ax = plt.subplots(figsize=(10, 6))
+	plot_metric_vs_beta_error_bars(
+		ax,
+		model_df_no_bl,
+		'final_empirical_compression',
+		f'Empirical Compression vs Beta for {model_arch} (mean ± std)',
+		'Empirical Compression',
+		baseline_data=baseline_arch,
+	)
+	plt.tight_layout()
+	fig.savefig(OUTPUT_DIR / f'compression_vs_beta_errorbars_{model_arch}.png', dpi=150)
+	print(f'  Saved: compression_vs_beta_errorbars_{model_arch}.png')
+	plt.close('all')
 
-			# Scale size by log of bottleneck width
-			widths = model_df_filtered['bottleneck_width']
-			sizes = np.log(widths) * 20  # Scale factor for visibility
-
-			scatter = ax.scatter(
-				model_df_filtered['final_empirical_compression'],
-				model_df_filtered['test_accuracy'],
-				c=model_df_filtered['beta'],
-				norm=LogNorm(beta_min, beta_max),
-				cmap=BOTTLENECK_CMAP,
-				s=sizes,
-				alpha=0.6,
-				edgecolors='black',
-				linewidth=0.5,
-			)
-			ax.set_xlabel('Final Empirical Compression')
-			ax.set_ylabel('Test Accuracy (%)')
-			ax.set_title(f'Test Accuracy vs Empirical Compression ({model_arch})')
-			ax.set_xscale('log')
-			ax.grid(True, alpha=0.3, which='both')
-			cbar = plt.colorbar(scatter)
-			cbar.set_label('Beta (log scale)')
-
-			# Add size legend outside the plot near colorbar
-			unique_widths = sorted(widths.unique())
-			legend_sizes = [np.log(w) * 20 for w in unique_widths]
-			legend_handles = [
-				plt.scatter(
-					[], [], s=s, color='gray', alpha=0.5, edgecolors='black', label=f'Width: {w}'
-				)
-				for w, s in zip(unique_widths, legend_sizes)
-			]
-			ax.legend(
-				handles=legend_handles,
-				title='Bottleneck Width',
-				loc='center left',
-				bbox_to_anchor=(1.2, 0.5),
-			)
-
-			plt.tight_layout()
-			filename = f'scatter_acc_compression_{model_arch}.png'
-			plt.savefig(OUTPUT_DIR / filename, dpi=150)
-			print(f'  Saved: {filename}')
-			plt.show()
-
-		# 7. Accuracy vs beta with gradient color
-		fig, ax = plt.subplots(figsize=(10, 6))
-		plot_accuracy_vs_beta_with_gradient(
-			ax, model_df_filtered, f'Accuracy vs Beta for {model_arch} (color = Bottleneck Width)'
-		)
-		plt.tight_layout()
-		filename = f'accuracy_vs_beta_{model_arch}.png'
-		plt.savefig(OUTPUT_DIR / filename, dpi=150)
-		print(f'  Saved: {filename}')
-		plt.show()
 
 # %%
 # 8. Stability analysis by seed
@@ -822,7 +719,7 @@ RECOMMENDATIONS:
 # Save final report
 report_path = OUTPUT_DIR / 'analysis_report.txt'
 with open(report_path, 'w', encoding='utf-8') as f:
-	f.write(f'Grid Search Results Analysis\n')
+	f.write(f'EfficientNet Grid Search Results Analysis\n')
 	f.write(f'{"=" * 60}\n\n')
 	f.write(f'Total experiments: {len(df)}\n')
 	f.write(f'Mean accuracy: {df["test_accuracy"].mean():.2f}%\n')
@@ -833,6 +730,9 @@ with open(report_path, 'w', encoding='utf-8') as f:
 	f.write(f'  Beta: {best_row["beta"]}\n')
 	f.write(f'  Seed: {best_row["seed"]}\n')
 	f.write(f'  Test Accuracy: {best_row["test_accuracy"]:.2f}%\n')
+	f.write(f'  Final Val Loss: {best_row["final_val_loss"]:.4f}\n')
+	f.write(f'  Final Train Loss: {best_row["final_train_loss"]:.4f}\n')
 
-print(f'Saved: analysis_report.txt')
-print(f'\nAnalysis complete! Results saved to: results/grid_search/analysis/')
+print(f'\nSaved: analysis_report.txt')
+
+print(f'\nAnalysis complete! Results saved to: {OUTPUT_DIR}')

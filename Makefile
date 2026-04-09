@@ -71,23 +71,88 @@ train: data
 
 
 ## Run optimized grid search (advanced version - recommended)
-.PHONY: grid-search
-grid-search: data
+.PHONY: resnet-vgg
+resnet-vgg: data
 	$(PYTHON_INTERPRETER) -m src.experiments.modeling.advanced_optimized_grid_search_train \
 		--config config/grid_search_config.yaml \
 		--results-dir results/grid_search \
 		--max-concurrent -1 \
 		--batch-size 2 \
-		--logdir tb_logs_v2
+		--logdir tb_logs_grid
 
 .PHONY: efficientnet-experiments
-efficientnet-experiments: data
+efficientnet: data
 	$(PYTHON_INTERPRETER) -m src.experiments.modeling.advanced_optimized_grid_search_train \
 		--config config/efficientnet_config.yaml \
 		--results-dir results/efficientnet_b2 \
 		--max-concurrent -1 \
 		--batch-size 4 \
-		--logdir tb_logs
+		--logdir tb_logs_efficientnet
+
+.PHONY: baseline-experiments
+baseline: data
+	$(PYTHON_INTERPRETER) -m src.experiments.modeling.advanced_optimized_grid_search_train \
+		--config config\baseline_config.yaml \
+		--results-dir results/baseline \
+		--max-concurrent -1 \
+		--batch-size 4 \
+		--logdir tb_logs_baseline
+
+## Download and prepare CIFAR-10-C dataset for robustness evaluation
+.PHONY: cifar10c-data
+cifar10c-data:
+	$(PYTHON_INTERPRETER) -m src.experiments.robustness.prepare_data \
+		-d data/processed \
+		--cleanup
+
+## Verify CIFAR-10-C data integrity
+.PHONY: verify-cifar10c
+verify-cifar10c:
+	$(PYTHON_INTERPRETER) -m src.experiments.robustness.prepare_data verify \
+		--data-dir data/processed/CIFAR-10-C
+
+## Run robustness validation (train and evaluate all models from config)
+.PHONY: robustness
+robustness: cifar10c-data
+	$(PYTHON_INTERPRETER) -m src.experiments.robustness.validate \
+		--config config/robustness_config.yaml \
+		--data-dir data/processed \
+		--output-dir results/robustness
+
+## Run robustness validation for a single existing model
+.PHONY: robustness-single
+robustness-single: cifar10c-data
+	$(PYTHON_INTERPRETER) -m src.experiments.robustness.validate \
+		--config config/robustness_config.yaml \
+		--model-path models/best_model.pt \
+		--model-arch vgg11 \
+		--bottleneck-width 2048 \
+		--data-dir data/processed \
+		--output-dir results/robustness
+
+## Run robustness analysis notebook
+.PHONY: robustness-analysis
+robustness-analysis:
+	uv run jupyter nbconvert --to notebook --execute notebooks/robustness_analysis.ipynb --output robustness_analysis_executed
+
+
+#################################################################################
+# ANALYSIS COMMANDS                                                              #
+#################################################################################
+
+## Run unified grid search analysis (ResNet + VGG): visualizations + numerical
+.PHONY: analyze-results
+analyze-results:
+	$(PYTHON_INTERPRETER) notebooks/analyze_grid_search.py
+
+## Run unified EfficientNet analysis: visualizations + numerical
+.PHONY: analyze-efficientnet
+analyze-efficientnet:
+	$(PYTHON_INTERPRETER) notebooks/analyze_efficientnet.py
+
+## Run all analysis scripts
+.PHONY: analyze-all
+analyze-all: analyze-results analyze-efficientnet
 
 #################################################################################
 # Self Documenting Commands                                                     #

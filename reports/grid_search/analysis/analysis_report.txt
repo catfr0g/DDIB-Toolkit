@@ -1,8 +1,8 @@
 Grid Search Results Analysis
 ============================================================
 
-Total experiments: 528
-Mean accuracy: 55.18%
+Total experiments: 576
+Mean accuracy: 57.19%
 Best accuracy: 86.25%
 
 Best configuration:
@@ -11,3 +11,5 @@ Best configuration:
   Beta: 1e-07
   Seed: 1984
   Test Accuracy: 86.25%
+  Final Val Loss: 0.7637
+  Final Train Loss: 0.0348

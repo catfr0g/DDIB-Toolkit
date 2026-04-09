@@ -1,21 +1,38 @@
+
 Numerical Analysis Summary
-============================================================
+==========================
 
-Total experiments: 528
+Total experiments: 576
 Best accuracy: 86.2500
-Mean accuracy: 55.1843
-Correlation (log_beta, accuracy): -0.7583
-Correlation (width, accuracy): 0.0848
+Mean accuracy: 57.1873
+Best compression: 6.3362
+Mean compression: 8.4951
 
-Model Performance:
-  Linear Regression CV R2: 0.4623
-  Random Forest CV R2: 0.1160
+Key Findings:
+1. Log-beta correlation with accuracy: -0.7583
+2. Width correlation with accuracy: 0.0879
+3. Linear Regression CV R2: 0.4623
+4. Random Forest CV R2: 0.1160
+5. Pareto-optimal configurations: 2
+6. Clusters identified: 4
 
-Pareto-optimal configurations: 16
-Best k for clustering (silhouette): 5 (score=0.4897)
+Statistical Relationship Analysis:
+  Accuracy:
+  - Spearman log(beta) vs accuracy: r=-0.6963, p=8.80e-78
+  - Spearman width vs accuracy:     r=0.2419, p=1.82e-08
+  - Partial log(beta)|width:        r=-0.7610, p=6.53e-101
+  - Partial width|log(beta):        r=0.1300, p=2.76e-03
+   - ANOVA beta: F=38.26, p=1.44e-75
+   - ANOVA width: F=38.26, p=1.44e-75
+   - ANOVA beta:width: F=0.03, p=1.00e+00
+  - Model R2: 0.5977
 
-Top configuration:
-  Model: vgg11
-  Beta: 1e-07
-  Width: 256
-  Accuracy: 86.2500
+  Compression:
+  - Spearman log(beta) vs compression: r=0.3647, p=4.75e-18
+  - Spearman width vs compression:     r=-0.4131, p=3.54e-23
+  - Partial log(beta)|width:           r=0.3771, p=2.78e-19
+  - Partial width|log(beta):           r=-0.3058, p=6.87e-13
+   - ANOVA beta: F=9.03, p=3.36e-20
+   - ANOVA width: F=9.03, p=3.36e-20
+   - ANOVA beta:width: F=0.18, p=1.00e+00
+  - Model R2: 0.2746

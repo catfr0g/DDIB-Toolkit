@@ -1,8 +1,8 @@
-Grid Search Results Analysis
+EfficientNet Grid Search Results Analysis
 ============================================================
 
-Total experiments: 793
-Mean accuracy: 59.07%
+Total experiments: 865
+Mean accuracy: 60.78%
 Best accuracy: 81.99%
 
 Best configuration:
@@ -11,3 +11,5 @@ Best configuration:
   Beta: 0.01
   Seed: 12
   Test Accuracy: 81.99%
+  Final Val Loss: 0.5608
+  Final Train Loss: 0.5167
