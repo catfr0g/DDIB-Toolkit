@@ -47,7 +47,7 @@ def linear_regression_analysis(
 	rmse = np.sqrt(mean_squared_error(y, y_pred))
 	print(f'R2 Score: {r2:.4f}')
 	print(f'RMSE: {rmse:.4f}')
-	print(f'\nCoefficients:')
+	print('\nCoefficients:')
 	for feat, coef in zip(X.columns, lr.coef_):
 		print(f'  {feat}: {coef:.4f}')
 	print(f'  Intercept: {lr.intercept_:.4f}')
@@ -61,7 +61,7 @@ def linear_regression_analysis(
 	ridge_r2 = r2_score(y, ridge.predict(X))
 	print(f'\nRidge R2: {ridge_r2:.4f}')
 	print(
-		f'Ridge Coefficients: ' + ', '.join(f'{f}={c:.4f}' for f, c in zip(X.columns, ridge.coef_))
+		'Ridge Coefficients: ' + ', '.join(f'{f}={c:.4f}' for f, c in zip(X.columns, ridge.coef_))
 	)
 
 	return {

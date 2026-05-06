@@ -6,11 +6,10 @@ This module provides metrics commonly used in robustness evaluation:
 - mAA: mean Accuracy under Adversarial attacks
 """
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 from loguru import logger
 import numpy as np
-import torch
 
 # Reference accuracies for ImageNet-C corruptions (from original paper)
 # These are used to normalize corruption error rates

@@ -15,7 +15,6 @@ import warnings
 from matplotlib.colors import LogNorm, PowerNorm
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import seaborn as sns
 
 from experiments.analysis import (
@@ -23,7 +22,6 @@ from experiments.analysis import (
 	plot_accuracy_vs_beta_with_gradient,
 	plot_compression_vs_beta_with_gradient,
 	plot_metric_vs_beta_error_bars,
-	save_and_close,
 )
 
 # Set plot style
@@ -43,8 +41,8 @@ BASELINE_PATH = PROJECT_ROOT / 'results' / 'baseline' / 'grid_search_results_fin
 OUTPUT_DIR = PROJECT_ROOT / 'reports' / 'efficientnet' / 'analysis'
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-print(f'Loading data from: results/efficientnet/grid_search_results_final.json')
-print(f'Results will be saved to: results/efficientnet/analysis/')
+print('Loading data from: results/efficientnet/grid_search_results_final.json')
+print('Results will be saved to: results/efficientnet/analysis/')
 
 # %%
 # Load data with baseline (filtered for EfficientNet models)
@@ -225,7 +223,7 @@ cbar = plt.colorbar(scatter)
 cbar.set_label('Test Accuracy (%)')
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'scatter_acc_compression_capacity.png', dpi=150)
-print(f'Saved: scatter_acc_compression_capacity.png')
+print('Saved: scatter_acc_compression_capacity.png')
 plt.close('all')
 
 
@@ -278,7 +276,7 @@ ax.legend(
 
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'scatter_acc_compression.png', dpi=150)
-print(f'Saved: scatter_acc_compression.png')
+print('Saved: scatter_acc_compression.png')
 plt.close('all')
 
 
@@ -300,7 +298,7 @@ plot_accuracy_vs_beta_with_gradient(
 )
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'accuracy_vs_beta.png', dpi=150)
-print(f'Saved: accuracy_vs_beta.png')
+print('Saved: accuracy_vs_beta.png')
 plt.close('all')
 
 
@@ -315,7 +313,7 @@ plot_compression_vs_beta_with_gradient(
 )
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'compression_vs_beta.png', dpi=150)
-print(f'Saved: compression_vs_beta.png')
+print('Saved: compression_vs_beta.png')
 plt.close('all')
 
 
@@ -332,7 +330,7 @@ plot_metric_vs_beta_error_bars(
 )
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'accuracy_vs_beta_errorbars.png', dpi=150)
-print(f'Saved: accuracy_vs_beta_errorbars.png')
+print('Saved: accuracy_vs_beta_errorbars.png')
 plt.close('all')
 
 
@@ -349,7 +347,7 @@ plot_metric_vs_beta_error_bars(
 )
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'compression_vs_beta_errorbars.png', dpi=150)
-print(f'Saved: compression_vs_beta_errorbars.png')
+print('Saved: compression_vs_beta_errorbars.png')
 plt.close('all')
 
 
@@ -382,7 +380,7 @@ plt.suptitle('')  # Remove automatic title
 plt.tight_layout()
 
 fig.savefig(OUTPUT_DIR / 'accuracy_distribution.png', dpi=150)
-print(f'Saved: accuracy_distribution.png')
+print('Saved: accuracy_distribution.png')
 plt.close('all')
 
 
@@ -406,7 +404,7 @@ cbar = plt.colorbar(scatter)
 cbar.set_label('Test Accuracy (%)')
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'train_vs_val_loss.png', dpi=150)
-print(f'Saved: train_vs_val_loss.png')
+print('Saved: train_vs_val_loss.png')
 plt.close('all')
 
 
@@ -459,7 +457,7 @@ ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'compression_metrics.png', dpi=150)
-print(f'Saved: compression_metrics.png')
+print('Saved: compression_metrics.png')
 plt.close('all')
 
 
@@ -684,7 +682,7 @@ print(best_by_acc)
 
 # Save to CSV
 summary.to_csv(OUTPUT_DIR / 'summary_by_config.csv')
-print(f'\nSaved: summary_by_config.csv')
+print('\nSaved: summary_by_config.csv')
 
 # %%
 # 10. Final report
@@ -719,12 +717,12 @@ RECOMMENDATIONS:
 # Save final report
 report_path = OUTPUT_DIR / 'analysis_report.txt'
 with open(report_path, 'w', encoding='utf-8') as f:
-	f.write(f'EfficientNet Grid Search Results Analysis\n')
+	f.write('EfficientNet Grid Search Results Analysis\n')
 	f.write(f'{"=" * 60}\n\n')
 	f.write(f'Total experiments: {len(df)}\n')
 	f.write(f'Mean accuracy: {df["test_accuracy"].mean():.2f}%\n')
 	f.write(f'Best accuracy: {df["test_accuracy"].max():.2f}%\n\n')
-	f.write(f'Best configuration:\n')
+	f.write('Best configuration:\n')
 	f.write(f'  Model: {best_row["model_arch"]}\n')
 	f.write(f'  Width: {best_row["bottleneck_width"]}\n')
 	f.write(f'  Beta: {best_row["beta"]}\n')
@@ -733,6 +731,6 @@ with open(report_path, 'w', encoding='utf-8') as f:
 	f.write(f'  Final Val Loss: {best_row["final_val_loss"]:.4f}\n')
 	f.write(f'  Final Train Loss: {best_row["final_train_loss"]:.4f}\n')
 
-print(f'\nSaved: analysis_report.txt')
+print('\nSaved: analysis_report.txt')
 
 print(f'\nAnalysis complete! Results saved to: {OUTPUT_DIR}')

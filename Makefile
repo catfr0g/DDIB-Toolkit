@@ -16,18 +16,23 @@ PYTHON_INTERPRETER = uv run python
 requirements:
 	uv sync
 
+## Install pre-commit hooks
+.PHONY: install-hooks
+install-hooks: requirements
+	uv run pre-commit install
+
 ## Delete all compiled Python files
 .PHONY: clean
 clean:
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
 
-## Lint using ruff, pylint and mypy (use `make format` to do formatting)
+## Lint using ruff, pylint and ty (use `make format` to do formatting)
 .PHONY: lint
 lint:
 	ruff check
 	pylint src/ddib/
-	mypy src/ddib/
+	uv run ty check src/ddib/
 
 ## Format source code with ruff
 .PHONY: format
@@ -119,6 +124,15 @@ robustness: cifar10c-data
 		--data-dir data/processed \
 		--output-dir results/robustness
 
+## Run robustness validation with parallel training (uses all GPUs)
+.PHONY: robustness-parallel
+robustness-parallel: cifar10c-data
+	$(PYTHON_INTERPRETER) -m src.experiments.robustness.validate \
+		--config config/robustness_config.yaml \
+		--data-dir data/processed \
+		--output-dir results/robustness \
+		--max-concurrent -1
+
 ## Run robustness validation for a single existing model
 .PHONY: robustness-single
 robustness-single: cifar10c-data
@@ -130,10 +144,38 @@ robustness-single: cifar10c-data
 		--data-dir data/processed \
 		--output-dir results/robustness
 
+## Run robustness evaluation only (skip training if model exists)
+.PHONY: robustness-eval
+robustness-eval: cifar10c-data
+	$(PYTHON_INTERPRETER) -m src.experiments.robustness.validate \
+		--config config/robustness_config.yaml \
+		--data-dir data/processed \
+		--output-dir results/robustness \
+		--skip-training
+
+## Run robustness evaluation only (skip training if model exists)
+.PHONY: robustness-eval-parallel
+robustness-eval-parallel: cifar10c-data
+	$(PYTHON_INTERPRETER) -m src.experiments.robustness.validate \
+		--config config/robustness_config.yaml \
+		--data-dir data/processed \
+		--output-dir results/robustness \
+		--skip-training
+
+## Run robustness with skip for both existing models and existing results
+.PHONY: robustness-skip-existing
+robustness-skip-existing: cifar10c-data
+	$(PYTHON_INTERPRETER) -m src.experiments.robustness.validate \
+		--config config/robustness_config.yaml \
+		--data-dir data/processed \
+		--output-dir results/robustness \
+		--skip-training \
+		--skip-validated
+
 ## Run robustness analysis notebook
 .PHONY: robustness-analysis
 robustness-analysis:
-	uv run jupyter nbconvert --to notebook --execute notebooks/robustness_analysis.ipynb --output robustness_analysis_executed
+	$(PYTHON_INTERPRETER) notebooks/robustness_validation_analysis.py
 
 
 #################################################################################

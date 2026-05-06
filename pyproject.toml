@@ -43,11 +43,12 @@ requires-python = ">=3.14"
 
 [project.optional-dependencies]
 dev = [
+    "pre-commit>=4.0.0",
     "pytest",
     "coverage>=7.11.3",
     "pytest-cov>=7.0.0",
     "pylint>=3.2.0",
-    "mypy>=1.0.0",
+    "ty>=0.0.29",
     "ruff>=0.1.6",
 ]
 
@@ -59,6 +60,7 @@ include = ["pyproject.toml", "src/**/*.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+ignore = ["E101"]  # Mixed spaces/tabs in docstring alignment
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]

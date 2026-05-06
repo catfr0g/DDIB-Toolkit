@@ -11,23 +11,19 @@ import json
 import math
 import os
 from pathlib import Path
-from queue import Queue
 import random
-import threading
-from typing import Literal, Optional
 
 from loguru import logger
 import numpy as np
 import psutil
 import torch
 from torch import nn
-import torch.multiprocessing as mp
 import typer
 import yaml
 
 from src.ddib.models import EfficientNetWithBottleneck, ResNetWithBottleneck, VGGWithBottleneck
 from src.ddib.trainer import IBModel, train_model
-from src.experiments.config import MODELS_DIR, RAW_DATA_DIR
+from src.experiments.config import RAW_DATA_DIR
 from src.experiments.dataset_loading import load_cifar10_dataset
 
 app = typer.Typer()
@@ -362,7 +358,7 @@ def main(
 	betas = config['betas']
 	seeds = config['seeds']
 
-	logger.info(f'Starting grid search with:')
+	logger.info('Starting grid search with:')
 	logger.info(f'  Models: {model_archs}')
 	logger.info(f'  Bottleneck widths: {bottleneck_widths}')
 	logger.info(f'  Betas: {betas}')

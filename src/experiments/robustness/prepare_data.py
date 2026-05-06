@@ -18,10 +18,9 @@ data/processed/CIFAR-10-C/
     ...
 """
 
-import os
 from pathlib import Path
 import shutil
-from typing import List, Optional
+from typing import Optional
 
 from loguru import logger
 import numpy as np
@@ -161,7 +160,6 @@ def extract_cifar10_labels(data_dir: Path, force: bool = False) -> Path:
 	Returns:
 	    Path to labels.npy file
 	"""
-	import gzip
 	import pickle
 	import tarfile
 

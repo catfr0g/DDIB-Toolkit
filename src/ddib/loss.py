@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Method to transform general loss of the model to its Deep Determenistic Information Bottelneck version version
+Methods to transform general loss of the model to its
+Deep Deterministic Information Bottleneck version.
 """
 
 import torch
@@ -9,7 +10,8 @@ from torch import nn
 
 def rbf_kernel(X: torch.Tensor, Y: torch.Tensor, *, sigma: float = 1.0) -> torch.Tensor:
 	"""
-	Compute the radial basis function (RBF / Gaussian) kernel between two sets of vectors.
+	Compute the radial basis function (RBF / Gaussian) kernel
+	between two sets of vectors.
 
 	Args:
 	    X: Tensor of shape (n_samples_X, n_features)
@@ -28,11 +30,12 @@ def rbf_kernel(X: torch.Tensor, Y: torch.Tensor, *, sigma: float = 1.0) -> torch
 
 def reyi_entropy(X: torch.Tensor, *, alpha: float = 1.01) -> torch.Tensor:
 	"""
-	Calculate Renyi entropy for the given tensor x and sigma parameter. Input tensor should be Gramm matrix.
+	Calculate Renyi entropy for the given tensor.
+
+	Input tensor should be a Gram matrix.
 
 	Args:
-	    x: Input tensor
-	    sigma: Sigma parameter for the Gaussian kernel
+	    X: Input tensor (Gram matrix)
 	    alpha: Alpha parameter for Renyi entropy (default 1.01)
 
 	Returns:
@@ -51,8 +54,8 @@ def reyi_entropy(X: torch.Tensor, *, alpha: float = 1.01) -> torch.Tensor:
 
 	try:
 		# Compute eigenvalues using eigh (for symmetric matrices)
-		eigv = torch.linalg.eigh(A_reg)[0]  # pylint: disable=not-callable
-	except torch._C._LinAlgError:
+		eigv = torch.linalg.eigh(A_reg)[0]
+	except torch.linalg.LinAlgError:
 		# Fallback: use diagonal elements if eigendecomposition fails
 		eigv = torch.diag(A_reg)
 
@@ -81,13 +84,13 @@ def reyi_entropy(X: torch.Tensor, *, alpha: float = 1.01) -> torch.Tensor:
 
 def joint_entropy(x: torch.Tensor, y: torch.Tensor, *, alpha: float = 1.01) -> torch.Tensor:
 	"""
-	Calculate joint entropy for tensors x and y. Input tensors should be Gramm matricies.
+	Calculate joint entropy for tensors x and y.
+
+	Input tensors should be Gram matrices.
 
 	Args:
 	    x: First input tensor
 	    y: Second input tensor
-	    s_x: Sigma parameter for x
-	    s_y: Sigma parameter for y
 	    alpha: Alpha parameter for Renyi entropy (default 1.01)
 
 	Returns:
@@ -105,9 +108,11 @@ def joint_entropy(x: torch.Tensor, y: torch.Tensor, *, alpha: float = 1.01) -> t
 	return reyi_entropy(k, alpha=alpha)
 
 
-def calculate_MI(x: torch.Tensor, y: torch.Tensor, *, alpha=1.01) -> torch.Tensor:
+def calculate_MI(x: torch.Tensor, y: torch.Tensor, *, alpha: float = 1.01) -> torch.Tensor:
 	"""
-	Calculate mutual information between tensors x and y. X and Y should be in Gramm matrix form.
+	Calculate mutual information between tensors x and y.
+
+	X and Y should be in Gram matrix form.
 
 	Args:
 	    x: First input tensor
@@ -134,8 +139,8 @@ def calculate_MI(x: torch.Tensor, y: torch.Tensor, *, alpha=1.01) -> torch.Tenso
 	return mi
 
 
-def calculate_kernel_width(x: torch.Tensor, top_k=10) -> float:
-	"""Function to calculate kernel width for Gramm Matrix transformation"""
+def calculate_kernel_width(x: torch.Tensor, top_k: int = 10) -> float:
+	"""Function to calculate kernel width for Gram Matrix transformation."""
 	x_detached = x.detach()
 	with torch.no_grad():
 		# Use more efficient distance calculation that's GPU-friendly
@@ -158,16 +163,25 @@ def calculate_kernel_width(x: torch.Tensor, top_k=10) -> float:
 
 
 class DDIB_Regularization(nn.Module):
-	"""Loss wraper for making any training powerd by information bottelneck!"""
+	"""Loss wrapper for making any training powered by information bottleneck."""
 
-	def __init__(self, original_loss: nn.Module, beta: float = 0.01, top_k: int = 10):
-		super(DDIB_Regularization, self).__init__()
+	def __init__(
+		self,
+		original_loss: nn.Module,
+		beta: float = 0.01,
+		top_k: int = 10,
+	):
+		super().__init__()
 		self.original_loss = original_loss
 		self.beta = beta
 		self.top_k = top_k
 
 	def forward(
-		self, y_pred: torch.Tensor, y_true: torch.Tensor, X: torch.Tensor, Z: torch.Tensor
+		self,
+		y_pred: torch.Tensor,
+		y_true: torch.Tensor,
+		X: torch.Tensor,
+		Z: torch.Tensor,
 	) -> torch.Tensor:
 		"""
 		Args:
@@ -176,7 +190,8 @@ class DDIB_Regularization(nn.Module):
 		    X: torch.Tensor - input data
 		    Z: torch.Tensor - output of the layer to optimize
 		"""
-		# Flatten both X and Z if they are not 2D (for cases where bottleneck input is conv features)
+		# Flatten both X and Z if they are not 2D (for cases where
+		# bottleneck input is conv features)
 		if X.dim() > 2:
 			X_flat = X.view(X.size(0), -1)
 		else:
@@ -196,7 +211,8 @@ class DDIB_Regularization(nn.Module):
 			)  # Fixed: use Z_flat for Z_gram
 			mutual_info = calculate_MI(X_gram, Z_gram)
 		except Exception:
-			# If there's an error calculating mutual information, return just the original loss
+			# If there's an error calculating mutual information,
+			# return just the original loss
 			mutual_info = torch.tensor(0.0, device=y_pred.device, dtype=y_pred.dtype)
 
 		original_loss = self.original_loss(y_pred, y_true)

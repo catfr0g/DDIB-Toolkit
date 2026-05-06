@@ -31,7 +31,7 @@ import seaborn as sns
 from sklearn.cluster import DBSCAN, KMeans
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import r2_score
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.tree import DecisionTreeRegressor, plot_tree
@@ -46,12 +46,10 @@ from experiments.analysis import (
 	linear_regression_analysis,
 	load_grid_search_results,
 	pairwise_beta_significance,
-	plot_accuracy_vs_beta_with_gradient,
 	plot_bootstrap_ci_vs_beta,
 	plot_bootstrap_ci_vs_beta_with_baseline,
 	prepare_regression_data,
 	random_forest_analysis,
-	save_and_close,
 )
 
 # Set plot style
@@ -122,7 +120,7 @@ sns.heatmap(
 ax.set_title('Correlation Matrix: Key Variables')
 plt.tight_layout()
 plt.savefig(OUTPUT_DIR / 'correlation_matrix.png', dpi=150)
-print(f'\nSaved: correlation_matrix.png')
+print('\nSaved: correlation_matrix.png')
 plt.close('all')
 
 
@@ -237,7 +235,7 @@ print('\n--- Analyzing Relationships: Beta, Width, and Metrics ---')
 print('\n=== Test Accuracy Relationships ===')
 acc_rel = analyze_beta_metric_relationship(df_no_baseline, 'test_accuracy')
 print(f'Samples: {acc_rel["n_samples"]}')
-print(f'\nSpearman Correlations:')
+print('\nSpearman Correlations:')
 print(
 	f'  log(beta) vs accuracy: r={acc_rel["beta_spearman_corr"]:.4f}, p={acc_rel["beta_spearman_p"]:.2e}'
 )
@@ -245,11 +243,11 @@ print(
 	f'  width vs accuracy:     r={acc_rel["width_spearman_corr"]:.4f}, p={acc_rel["width_spearman_p"]:.2e}'
 )
 
-print(f'\nKruskal-Wallis Tests (group differences):')
+print('\nKruskal-Wallis Tests (group differences):')
 print(f'  Beta groups:    H={acc_rel["kw_beta_stat"]:.2f}, p={acc_rel["kw_beta_p"]:.2e}')
 print(f'  Width groups:   H={acc_rel["kw_width_stat"]:.2f}, p={acc_rel["kw_width_p"]:.2e}')
 
-print(f'\nPartial Correlations (controlling for other variable):')
+print('\nPartial Correlations (controlling for other variable):')
 print(
 	f'  log(beta) | width:  r={acc_rel["partial_beta_corr"]:.4f}, p={acc_rel["partial_beta_p"]:.2e}'
 )
@@ -257,7 +255,7 @@ print(
 	f'  width | log(beta):  r={acc_rel["partial_width_corr"]:.4f}, p={acc_rel["partial_width_p"]:.2e}'
 )
 
-print(f'\nTwo-Way ANOVA (beta x width interaction):')
+print('\nTwo-Way ANOVA (beta x width interaction):')
 anova_acc = acc_rel['anova_table']
 for effect, vals in anova_acc.items():
 	print(f'  {effect}: F={vals["F"]:.2f}, p={vals["p"]:.2e}, df={vals["df"]}')
@@ -267,7 +265,7 @@ print(f'\nModel R² = {acc_rel["r_squared"]:.4f}')
 print('\n=== Empirical Compression Relationships ===')
 comp_rel = analyze_beta_metric_relationship(df_no_baseline, 'final_empirical_compression')
 print(f'Samples: {comp_rel["n_samples"]}')
-print(f'\nSpearman Correlations:')
+print('\nSpearman Correlations:')
 print(
 	f'  log(beta) vs compression: r={comp_rel["beta_spearman_corr"]:.4f}, p={comp_rel["beta_spearman_p"]:.2e}'
 )
@@ -275,11 +273,11 @@ print(
 	f'  width vs compression:     r={comp_rel["width_spearman_corr"]:.4f}, p={comp_rel["width_spearman_p"]:.2e}'
 )
 
-print(f'\nKruskal-Wallis Tests (group differences):')
+print('\nKruskal-Wallis Tests (group differences):')
 print(f'  Beta groups:    H={comp_rel["kw_beta_stat"]:.2f}, p={comp_rel["kw_beta_p"]:.2e}')
 print(f'  Width groups:   H={comp_rel["kw_width_stat"]:.2f}, p={comp_rel["kw_width_p"]:.2e}')
 
-print(f'\nPartial Correlations (controlling for other variable):')
+print('\nPartial Correlations (controlling for other variable):')
 print(
 	f'  log(beta) | width:  r={comp_rel["partial_beta_corr"]:.4f}, p={comp_rel["partial_beta_p"]:.2e}'
 )
@@ -287,7 +285,7 @@ print(
 	f'  width | log(beta):  r={comp_rel["partial_width_corr"]:.4f}, p={comp_rel["partial_width_p"]:.2e}'
 )
 
-print(f'\nTwo-Way ANOVA (beta x width interaction):')
+print('\nTwo-Way ANOVA (beta x width interaction):')
 anova_comp = comp_rel['anova_table']
 for effect, vals in anova_comp.items():
 	print(f'  {effect}: F={vals["F"]:.2f}, p={vals["p"]:.2e}, df={vals["df"]}')
@@ -319,7 +317,7 @@ ax.set_title(
 ax.grid(True, alpha=0.3)
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'rel_accuracy_vs_logbeta.png', dpi=150)
-print(f'\nSaved: rel_accuracy_vs_logbeta.png')
+print('\nSaved: rel_accuracy_vs_logbeta.png')
 plt.close('all')
 
 # Scatter: width vs accuracy
@@ -341,7 +339,7 @@ ax.set_title(
 ax.grid(True, alpha=0.3)
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'rel_accuracy_vs_width.png', dpi=150)
-print(f'Saved: rel_accuracy_vs_width.png')
+print('Saved: rel_accuracy_vs_width.png')
 plt.close('all')
 
 # Box plot: accuracy by beta group
@@ -359,7 +357,7 @@ ax.tick_params(axis='x', rotation=45, labelsize=11)
 ax.grid(True, alpha=0.3)
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'rel_accuracy_by_beta.png', dpi=150)
-print(f'Saved: rel_accuracy_by_beta.png')
+print('Saved: rel_accuracy_by_beta.png')
 plt.close('all')
 
 # Box plot: accuracy by width group
@@ -381,7 +379,7 @@ ax.tick_params(axis='x', rotation=45, labelsize=11)
 ax.grid(True, alpha=0.3)
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'rel_accuracy_by_width.png', dpi=150)
-print(f'Saved: rel_accuracy_by_width.png')
+print('Saved: rel_accuracy_by_width.png')
 plt.close('all')
 
 plt.rcParams.update(
@@ -414,7 +412,7 @@ ax.set_title(
 ax.grid(True, alpha=0.3)
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'rel_compression_vs_logbeta.png', dpi=150)
-print(f'\nSaved: rel_compression_vs_logbeta.png')
+print('\nSaved: rel_compression_vs_logbeta.png')
 plt.close('all')
 
 # Scatter: width vs compression
@@ -436,7 +434,7 @@ ax.set_title(
 ax.grid(True, alpha=0.3)
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'rel_compression_vs_width.png', dpi=150)
-print(f'Saved: rel_compression_vs_width.png')
+print('Saved: rel_compression_vs_width.png')
 plt.close('all')
 
 # Box plot: compression by beta group
@@ -454,7 +452,7 @@ ax.tick_params(axis='x', rotation=45, labelsize=11)
 ax.grid(True, alpha=0.3)
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'rel_compression_by_beta.png', dpi=150)
-print(f'Saved: rel_compression_by_beta.png')
+print('Saved: rel_compression_by_beta.png')
 plt.close('all')
 
 # Box plot: compression by width group
@@ -478,7 +476,7 @@ ax.tick_params(axis='x', rotation=45, labelsize=11)
 ax.grid(True, alpha=0.3)
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'rel_compression_by_width.png', dpi=150)
-print(f'Saved: rel_compression_by_width.png')
+print('Saved: rel_compression_by_width.png')
 plt.close('all')
 
 plt.rcParams.update(
@@ -499,7 +497,7 @@ plot_bootstrap_ci_vs_beta(
 )
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'bootstrap_accuracy_ci.png', dpi=150)
-print(f'\nSaved: bootstrap_accuracy_ci.png')
+print('\nSaved: bootstrap_accuracy_ci.png')
 plt.close('all')
 
 
@@ -516,7 +514,7 @@ plot_bootstrap_ci_vs_beta(
 )
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'bootstrap_compression_ci.png', dpi=150)
-print(f'Saved: bootstrap_compression_ci.png')
+print('Saved: bootstrap_compression_ci.png')
 plt.close('all')
 
 
@@ -541,7 +539,7 @@ plot_bootstrap_ci_vs_beta_with_baseline(
 )
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'bootstrap_accuracy_ci_vs_baseline.png', dpi=150)
-print(f'Saved: bootstrap_accuracy_ci_vs_baseline.png')
+print('Saved: bootstrap_accuracy_ci_vs_baseline.png')
 plt.close('all')
 
 # Print which beta regions differ from baseline
@@ -578,7 +576,7 @@ plot_bootstrap_ci_vs_beta_with_baseline(
 )
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'bootstrap_compression_ci_vs_baseline.png', dpi=150)
-print(f'Saved: bootstrap_compression_ci_vs_baseline.png')
+print('Saved: bootstrap_compression_ci_vs_baseline.png')
 plt.close('all')
 
 # Print which beta regions differ from baseline
@@ -649,7 +647,7 @@ ax.set_xlabel('Beta')
 ax.set_ylabel('Beta')
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'pairwise_significance_accuracy.png', dpi=150)
-print(f'Saved: pairwise_significance_accuracy.png')
+print('Saved: pairwise_significance_accuracy.png')
 plt.close('all')
 
 # Print directional summary
@@ -718,7 +716,7 @@ ax.set_xlabel('Beta')
 ax.set_ylabel('Beta')
 plt.tight_layout()
 fig.savefig(OUTPUT_DIR / 'pairwise_significance_compression.png', dpi=150)
-print(f'Saved: pairwise_significance_compression.png')
+print('Saved: pairwise_significance_compression.png')
 plt.close('all')
 
 # Print directional summary
@@ -819,7 +817,7 @@ ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
 plt.savefig(OUTPUT_DIR / 'regression_predictions.png', dpi=150)
-print(f'\nSaved: regression_predictions.png')
+print('\nSaved: regression_predictions.png')
 plt.close('all')
 
 
@@ -890,7 +888,7 @@ ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
 plt.savefig(OUTPUT_DIR / 'feature_importance.png', dpi=150)
-print(f'\nSaved: feature_importance.png')
+print('\nSaved: feature_importance.png')
 plt.close('all')
 
 
@@ -944,7 +942,7 @@ ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
 plt.savefig(OUTPUT_DIR / 'elbow_method.png', dpi=150)
-print(f'Saved: elbow_method.png')
+print('Saved: elbow_method.png')
 
 # Print best k by silhouette score
 best_k_idx = np.argmax(silhouette_scores)
@@ -1056,7 +1054,7 @@ ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
 plt.savefig(OUTPUT_DIR / 'cluster_visualization.png', dpi=150)
-print(f'Saved: cluster_visualization.png')
+print('Saved: cluster_visualization.png')
 plt.close('all')
 
 
@@ -1107,7 +1105,7 @@ print('\n--- Explained Variance Ratio ---')
 for i, var in enumerate(pca.explained_variance_ratio_):
 	print(f'PC{i + 1}: {var:.4f}')
 
-print(f'\nCumulative Explained Variance:')
+print('\nCumulative Explained Variance:')
 cumsum = np.cumsum(pca.explained_variance_ratio_)
 for i, c in enumerate(cumsum):
 	print(f'PC{i + 1}: {c:.4f}')
@@ -1164,7 +1162,7 @@ plt.colorbar(scatter, ax=ax, label='Test Accuracy')
 
 plt.tight_layout()
 plt.savefig(OUTPUT_DIR / 'pca_analysis.png', dpi=150)
-print(f'\nSaved: pca_analysis.png')
+print('\nSaved: pca_analysis.png')
 plt.close('all')
 
 
@@ -1202,7 +1200,7 @@ plot_tree(
 ax.set_title('Decision Tree for Test Accuracy Prediction')
 plt.tight_layout()
 plt.savefig(OUTPUT_DIR / 'decision_tree.png', dpi=150, bbox_inches='tight')
-print(f'\nSaved: decision_tree.png')
+print('\nSaved: decision_tree.png')
 plt.close('all')
 
 
@@ -1314,7 +1312,7 @@ try:
 
 	plt.tight_layout()
 	fig.savefig(OUTPUT_DIR / 'optimal_region.png', dpi=150)
-	print(f'\nSaved: optimal_region.png')
+	print('\nSaved: optimal_region.png')
 	plt.close('all')
 except Exception as e:
 	print(f'\nWarning: Could not create optimal_region.png: {e}')
@@ -1388,7 +1386,7 @@ ax.grid(True, alpha=0.3)
 plt.tight_layout()
 try:
 	plt.savefig(OUTPUT_DIR / 'pareto_frontier.png', dpi=150)
-	print(f'\nSaved: pareto_frontier.png')
+	print('\nSaved: pareto_frontier.png')
 except Exception as e:
 	print(f'\nWarning: Could not save pareto_frontier.png: {e}')
 plt.close('all')
@@ -1410,11 +1408,11 @@ print(f'Best compression: {df["final_empirical_compression"].min():.4f}')
 print(f'Mean compression: {df["final_empirical_compression"].mean():.4f}')
 
 print('\n--- Key Findings ---')
-print(f'\n1. CORRELATION PATTERNS:')
+print('\n1. CORRELATION PATTERNS:')
 print(f'   - Log-beta correlation with accuracy: {log_beta_accuracy_corr:.4f}')
 print(f'   - Width correlation with accuracy: {width_accuracy_corr:.4f}')
 
-print(f'\n2. MODEL PERFORMANCE:')
+print('\n2. MODEL PERFORMANCE:')
 print(f'   - Linear Regression CV R2: {lr_results["cv_r2_mean"]:.4f}')
 print(f'   - Random Forest CV R2: {rf_results["cv_r2_mean"]:.4f}')
 improvement = (
@@ -1422,7 +1420,7 @@ improvement = (
 )
 print(f'   - Non-linear models improve prediction by: {improvement:.1f}%')
 
-print(f'\n3. OPTIMAL CONFIGURATIONS:')
+print('\n3. OPTIMAL CONFIGURATIONS:')
 print(f'   - Average log_beta in top 20: {np.log10(top_configs["beta"]).mean():.4f}')
 print(f'   - Average width in top 20: {top_configs["bottleneck_width"].mean():.1f}')
 
@@ -1430,8 +1428,8 @@ print(f'\n4. PARETO-OPTIMAL SOLUTIONS: {len(pareto_df)} configurations found')
 
 print(f'\n5. CLUSTER STRUCTURE: {optimal_k} distinct regimes identified')
 
-print(f'\n6. STATISTICAL RELATIONSHIP ANALYSIS:')
-print(f'   --- Accuracy ---')
+print('\n6. STATISTICAL RELATIONSHIP ANALYSIS:')
+print('   --- Accuracy ---')
 print(
 	f'   - Spearman log(beta) vs accuracy: r={acc_rel["beta_spearman_corr"]:.4f}, p={acc_rel["beta_spearman_p"]:.2e}'
 )
@@ -1449,7 +1447,7 @@ for effect, vals in anova_acc.items():
 	print(f'   - ANOVA {effect}: F={vals["F"]:.2f}, p={vals["p"]:.2e}')
 print(f'   - Model R2: {acc_rel["r_squared"]:.4f}')
 
-print(f'   --- Compression ---')
+print('   --- Compression ---')
 print(
 	f'   - Spearman log(beta) vs compression: r={comp_rel["beta_spearman_corr"]:.4f}, p={comp_rel["beta_spearman_p"]:.2e}'
 )
@@ -1522,6 +1520,6 @@ Statistical Relationship Analysis:
 with open(OUTPUT_DIR / 'analysis_summary.txt', 'w', encoding='utf-8') as f:
 	f.write(summary_text)
 
-print(f'\n\nSaved: analysis_summary.txt')
+print('\n\nSaved: analysis_summary.txt')
 
 print(f'\nAnalysis complete! Results saved to: {OUTPUT_DIR}')

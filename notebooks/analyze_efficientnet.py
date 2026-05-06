@@ -22,7 +22,7 @@ import seaborn as sns
 from sklearn.cluster import DBSCAN, KMeans
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import r2_score
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.tree import DecisionTreeRegressor, plot_tree
@@ -44,7 +44,6 @@ from experiments.analysis import (
 	plot_metric_vs_beta_error_bars,
 	prepare_regression_data,
 	random_forest_analysis,
-	save_and_close,
 )
 
 sns.set_style('whitegrid')
@@ -445,7 +444,7 @@ for model_arch in df['model_arch'].unique():
 	plt.colorbar(ax.collections[0], label='Accuracy (%)')
 	plt.tight_layout()
 	fig.savefig(OUTPUT_DIR / f'scatter_acc_compression_capacity_{model_arch}.png', dpi=150)
-	print(f'  Saved scatter')
+	print('  Saved scatter')
 	plt.close('all')
 
 	bp = mdf[mdf['beta'] > 0]['beta']
@@ -480,7 +479,7 @@ for model_arch in df['model_arch'].unique():
 	ax.legend(handles=lh, title='Width', loc='center left', bbox_to_anchor=(1.2, 0.5))
 	plt.tight_layout()
 	fig.savefig(OUTPUT_DIR / f'scatter_acc_compression_{model_arch}.png', dpi=150)
-	print(f'  Saved scatter2')
+	print('  Saved scatter2')
 	plt.close('all')
 
 	ba = df_baseline_only[df_baseline_only['model_arch'] == model_arch]
@@ -549,7 +548,7 @@ summary = df.groupby(['model_arch', 'bottleneck_width', 'beta']).agg(
 summary.columns = ['mean_acc', 'std_acc', 'mean_val_loss', 'mean_compression']
 summary = summary.round(3)
 summary.to_csv(OUTPUT_DIR / 'summary_by_config.csv')
-print(f'\nSaved: summary_by_config.csv')
+print('\nSaved: summary_by_config.csv')
 
 # Final report
 best_row = df.loc[df['test_accuracy'].idxmax()]
@@ -1104,5 +1103,5 @@ Spearman acc: logβ r={acc_rel['beta_spearman_corr']:.4f}, w r={acc_rel['width_s
 Spearman comp: logβ r={comp_rel['beta_spearman_corr']:.4f}, w r={comp_rel['width_spearman_corr']:.4f}
 """
 (OUTPUT_DIR / 'analysis_summary.txt').write_text(summary_text, encoding='utf-8')
-print(f'\nSaved: analysis_summary.txt')
+print('\nSaved: analysis_summary.txt')
 print(f'\nAnalysis complete! Results: {OUTPUT_DIR}')

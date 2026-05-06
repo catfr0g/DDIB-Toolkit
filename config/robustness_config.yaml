@@ -9,94 +9,1962 @@
 
 # Model configurations to evaluate
 models:
-  # VGG11 - Best overall performance
-  - name: vgg11_best
-    model_arch: vgg11
-    bottleneck_width: 2048
-    beta: 1.0e-08
-    seed: 1984
-    description: "VGG11 with 2048 bottleneck - best overall accuracy"
-    # Training hyperparameters (overrides defaults)
-    training:
-      num_epochs: 100
-      learning_rate: 0.001
-      weight_decay: 0.0001
-      train_batch_size: 128
-      val_batch_size: 128
-      test_batch_size: 128
-
-  # VGG11 - Alternative good configuration
-  - name: vgg11_alt
-    model_arch: vgg11
-    bottleneck_width: 2048
-    beta: 1.0e-06
-    seed: 12
-    description: "VGG11 with 2048 bottleneck - alternative config"
-    training:
-      num_epochs: 100
-      learning_rate: 0.001
-      weight_decay: 0.0001
-
-  # ResNet18 - Best configuration
-  - name: resnet18_best
-    model_arch: resnet18
-    bottleneck_width: 2048
-    beta: 1.0e-06
-    seed: 42
-    description: "ResNet18 with 2048 bottleneck - best accuracy"
-    training:
-      num_epochs: 100
-      learning_rate: 0.001
-      weight_decay: 0.0001
-
-  # ResNet18 - Alternative good configuration
-  - name: resnet18_alt
+  - name: optimal_resnet18_1.0e-07
     model_arch: resnet18
     bottleneck_width: 2048
     beta: 1.0e-07
-    seed: 42
-    description: "ResNet18 with 2048 bottleneck - alternative config"
+    seed: 78923
     training:
       num_epochs: 100
       learning_rate: 0.001
       weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
 
-  # EfficientNet-B0 - Representative configuration
-  - name: efficientnet_b0_best
-    model_arch: efficientnet_b0
-    bottleneck_width: 16
+  - name: optimal_resnet18_1.0e-06
+    model_arch: resnet18
+    bottleneck_width: 2048
     beta: 1.0e-06
-    seed: 42
-    description: "EfficientNet-B0 with 16 bottleneck - best found"
+    seed: 78923
     training:
       num_epochs: 100
       learning_rate: 0.001
       weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
 
-# Default training hyperparameters (used if not specified in model config)
-training_defaults:
-  num_epochs: 100
-  train_batch_size: 128
-  val_batch_size: 128
-  test_batch_size: 128
-  learning_rate: 0.001
-  weight_decay: 0.0001
-  alpha: 1.01
-  train_val_split_ratio: 0.8
-  num_workers: 4
-  precision: "16-mixed"
-  use_scheduler: true
-  scheduler_type: "reduceonplateau"
+  - name: optimal_resnet18_1.0e-05
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-04
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-2
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-1
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_0
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 0
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_10
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 10
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_100
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 100
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-07
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-06
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-05
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-04
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-2
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-1
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_0
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 0
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_10
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 10
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_100
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 100
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-07
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-06
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-05
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-04
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-2
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-1
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_0
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 0
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_10
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 10
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_100
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 100
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+  - name: optimal_efficientnet_b1_1.0e-07
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-06
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-05
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-04
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-2
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-1
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_0
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 0
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_10
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 10
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_100
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 100
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-07
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-06
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-05
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-04
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-2
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-1
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_0
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 0
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_10
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 10
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_100
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 100
+    seed: 78923
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-07_9876
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-06_9876
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-05_9876
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-04_9876
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-2_9876
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-1_9876
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_0_9876
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 0
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1_9876
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_10_9876
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 10
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_100_9876
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 100
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-07_9876
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-06_9876
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-05_9876
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-04_9876
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-2_9876
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-1_9876
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_0_9876
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 0
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1_9876
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_10_9876
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 10
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_100_9876
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 100
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-07_9876
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-06_9876
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-05_9876
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-04_9876
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-2_9876
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-1_9876
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_0_9876
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 0
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1_9876
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_10_9876
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 10
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_100_9876
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 100
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+  - name: optimal_efficientnet_b1_1.0e-07_9876
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-06_9876
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-05_9876
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-04_9876
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-2_9876
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-1_9876
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_0_9876
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 0
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1_9876
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_10_9876
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 10
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_100_9876
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 100
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-07_9876
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-06_9876
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-05_9876
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-04_9876
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-2_9876
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-1_9876
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_0_9876
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 0
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1_9876
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_10_9876
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 10
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_100_9876
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 100
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-07_54321
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 54321
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-06_9876
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-05_54321
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-04_54321
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-2_54321
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1.0e-1_54321
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_0_54321
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 0
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_1_54321
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_10_54321
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 10
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_resnet18_100_54321
+    model_arch: resnet18
+    bottleneck_width: 2048
+    beta: 100
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-07_54321
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-06_54321
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-05_54321
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-04_54321
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-2_54321
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1.0e-1_54321
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_0_54321
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 0
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_1_54321
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_10_54321
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 10
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_vgg11_100_54321
+    model_arch: vgg11
+    bottleneck_width: 2048
+    beta: 100
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-07_54321
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-06_54321
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-05_54321
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-04_54321
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-2_54321
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1.0e-1_54321
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_0_54321
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 0
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_1_54321
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_10_54321
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 10
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b0_100_54321
+    model_arch: efficientnet_b0
+    bottleneck_width: 2048
+    beta: 100
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+  - name: optimal_efficientnet_b1_1.0e-07_54321
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-06_54321
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-05_54321
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-04_54321
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-2_54321
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1.0e-1_54321
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_0_54321
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 0
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_1_54321
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_10_54321
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 10
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b1_100_54321
+    model_arch: efficientnet_b1
+    bottleneck_width: 2048
+    beta: 100
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-07_54321
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-07
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-06_54321
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-06
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-05_54321
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-05
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-04_54321
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-04
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-2_54321
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-2
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1.0e-1_54321
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1.0e-1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_0_54321
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 0
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_1_54321
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 1
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_10_54321
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 10
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
+
+  - name: optimal_efficientnet_b2_100_54321
+    model_arch: efficientnet_b2
+    bottleneck_width: 2048
+    beta: 100
+    seed: 9876
+    training:
+      num_epochs: 100
+      learning_rate: 0.001
+      weight_decay: 0.0001
+      train_batch_size: 1024
+      val_batch_size: 1024
+      test_batch_size: 1024
 
 # Robustness evaluation settings
 evaluation:
   # PGD Attack settings
   pgd:
-    epsilon: 0.03137254901960784  # 8/255
-    alpha: 0.00784313725490196   # 2/255
+    epsilon: 0.03137254901960784 # 8/255
+    alpha: 0.00784313725490196 # 2/255
     iterations: 10
     norm: "inf"
-    max_samples: 1000  # Limit samples for computational efficiency
+    max_samples: 1000 # Limit samples for computational efficiency
 
   # CIFAR-10-C settings
   corruptions:

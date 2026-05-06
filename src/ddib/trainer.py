@@ -1,8 +1,10 @@
 """
-PyTorch Lightning module for training models with flexible loss functions, train and validation data.
+PyTorch Lightning module for training models with flexible loss
+functions, train and validation data.
 
-This module provides a flexible PyTorch Lightning module that can be used to train models
-with different loss functions, train/validation splits, and other customizable parameters.
+This module provides a flexible PyTorch Lightning module that can
+be used to train models with different loss functions, train/validation
+splits, and other customizable parameters.
 """
 
 from typing import Any, Dict, Optional, Union
@@ -100,12 +102,14 @@ class EpochProgressCallback(Callback):
 
 class IBModel(pl.LightningModule):
 	"""
-	A flexible PyTorch Lightning module for training neural networks with configurable loss functions.
+	A flexible PyTorch Lightning module for training neural
+	networks with configurable loss functions.
 
 	Attributes:
 	    model: The neural network model to be trained
 	    loss_fn: The loss function to use during training
-	    val_loss_fn: The loss function to use during validation (defaults to loss_fn if None)
+	    val_loss_fn: The loss function to use during validation
+	                 (defaults to loss_fn if None)
 	    optimizer: The optimizer to use for training
 	    learning_rate: Learning rate for the optimizer
 	"""
@@ -122,7 +126,8 @@ class IBModel(pl.LightningModule):
 		beta: float = 0.01,
 		top_k: int = 10,
 		use_scheduler: bool = True,
-		scheduler_type: str = 'reduceonplateau',  # Options: "reduceonplateau", "step", "cosine"
+		scheduler_type: str = 'reduceonplateau',
+		# Options: "reduceonplateau", "step", "cosine"
 		**optimizer_kwargs,
 	) -> None:
 		"""
@@ -132,12 +137,15 @@ class IBModel(pl.LightningModule):
 		    model: The neural network model to train
 		    loss_fn: The loss function to use during training
 		    layer_to_optimize: str
-		    val_loss_fn: Loss function for validation (uses loss_fn if None)
+		    val_loss_fn: Loss function for validation
+		                 (uses loss_fn if None)
 		    optimizer_class: Class of optimizer to use (default: Adam)
 		    learning_rate: Learning rate for the optimizer
 		    use_scheduler: Whether to use a learning rate scheduler
-		    scheduler_type: Type of scheduler to use ("reduceonplateau", "step", "cosine")
-		    **optimizer_kwargs: Additional arguments to pass to the optimizer
+		    scheduler_type: Type of scheduler to use
+		                    ("reduceonplateau", "step", "cosine")
+		    **optimizer_kwargs: Additional arguments to pass to
+		                        the optimizer
 		"""
 		super().__init__()
 		self.model = model
@@ -153,7 +161,9 @@ class IBModel(pl.LightningModule):
 		self.optimizer_kwargs = optimizer_kwargs
 		self.save_hyperparameters(ignore=['model', 'loss_fn', 'val_loss_fn'])
 
-	def forward(self, x: torch.Tensor, *args, **kwargs) -> Any:  # pylint: disable=arguments-differ
+	def forward(  # pylint: disable=arguments-differ
+		self, x: torch.Tensor, *args, **kwargs
+	) -> Any:
 		"""
 		Forward pass through the model.
 
@@ -165,7 +175,9 @@ class IBModel(pl.LightningModule):
 		"""
 		return self.model(x)
 
-	def training_step(self, batch: tuple, batch_idx: int, *args, **kwargs) -> Dict[str, Any]:  # pylint: disable=arguments-differ
+	def training_step(  # pylint: disable=arguments-differ
+		self, batch: tuple, batch_idx: int, *args, **kwargs
+	) -> Dict[str, Any]:
 		"""
 		Training step for one batch.
 
@@ -187,35 +199,41 @@ class IBModel(pl.LightningModule):
 		# Calculate classification accuracy
 		acc = (y_hat.argmax(dim=1) == y).float().mean()
 
-		# Calculate empirical compression (mutual info) from the loss function
-		# The loss function already computes mutual info internally, so we extract it
-		# For this, we need to compute it separately here
-		z = outs[self.layer_to_optimize]
-		if x.dim() > 2:
-			x_flat = x.view(x.size(0), -1)
-		else:
-			x_flat = x
-		if z.dim() > 2:
-			z_flat = z.view(z.size(0), -1)
-		else:
-			z_flat = z
+		# Calculate empirical compression (mutual info) for logging.
+		# Wrap in no_grad() to avoid creating a separate graph that
+		# would conflict with loss.backward()
+		with torch.no_grad():
+			z = outs[self.layer_to_optimize]
+			if x.dim() > 2:
+				x_flat = x.view(x.size(0), -1)
+			else:
+				x_flat = x
+			if z.dim() > 2:
+				z_flat = z.view(z.size(0), -1)
+			else:
+				z_flat = z
 
-		x_sigma = calculate_kernel_width(x_flat, top_k=self.top_k)
-		z_sigma = calculate_kernel_width(z_flat, top_k=self.top_k)
-		x_gram = rbf_kernel(x_flat, x_flat, sigma=x_sigma)
-		z_gram = rbf_kernel(z_flat, z_flat, sigma=z_sigma)
-		mutual_info = calculate_MI(x_gram, z_gram)
+			x_sigma = calculate_kernel_width(x_flat, top_k=self.top_k)
+			z_sigma = calculate_kernel_width(z_flat, top_k=self.top_k)
+			x_gram = rbf_kernel(x_flat, x_flat, sigma=x_sigma)
+			z_gram = rbf_kernel(z_flat, z_flat, sigma=z_sigma)
+			mutual_info = calculate_MI(x_gram, z_gram)
 
-		# Calculate effective capacity utilization (ratio of original loss to log2(W))
-		# where W is the number of parameters in the model
+		# Calculate effective capacity utilization (ratio of original
+		# loss to log2(W)) where W is the number of parameters
 		total_params = sum(p.numel() for p in self.parameters())
 		log_w = torch.log2(torch.tensor(float(total_params)))
-		effective_capacity_utilization = loss / log_w if log_w > 0 else torch.tensor(0.0)
+		effective_capacity_utilization = loss.detach() / log_w if log_w > 0 else torch.tensor(0.0)
 
 		# Log metrics
 		self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=False)
 		self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=False)
-		self.log('train_empirical_compression', mutual_info, on_step=True, on_epoch=True)
+		self.log(
+			'train_empirical_compression',
+			mutual_info,
+			on_step=True,
+			on_epoch=True,
+		)
 		self.log(
 			'train_effective_capacity_utilization',
 			effective_capacity_utilization,
@@ -223,17 +241,22 @@ class IBModel(pl.LightningModule):
 			on_epoch=True,
 		)
 
-		if self.logger and hasattr(self.logger, 'experiment'):
-			self.logger.experiment.add_scalar('Loss/Train', loss, self.global_step)
-			self.logger.experiment.add_scalar('Accuracy/Train', acc, self.global_step)
-			self.logger.experiment.add_scalar(
-				'Metrics/TrainEmpiricalCompression', mutual_info, self.global_step
-			)
-			self.logger.experiment.add_scalar(
-				'Metrics/TrainEffectiveCapacityUtilization',
-				effective_capacity_utilization,
-				self.global_step,
-			)
+		# Log to TensorBoard if available
+		if self.logger is not None:
+			experiment = getattr(self.logger, 'experiment', None)
+			if experiment is not None and hasattr(experiment, 'add_scalar'):
+				experiment.add_scalar('Loss/Train', loss, self.global_step)
+				experiment.add_scalar('Accuracy/Train', acc, self.global_step)
+				experiment.add_scalar(
+					'Metrics/TrainEmpiricalCompression',
+					mutual_info,
+					self.global_step,
+				)
+				experiment.add_scalar(
+					'Metrics/TrainEffectiveCapacityUtilization',
+					effective_capacity_utilization,
+					self.global_step,
+				)
 
 		return {
 			'loss': loss,
@@ -242,7 +265,9 @@ class IBModel(pl.LightningModule):
 			'train_effective_capacity_utilization': effective_capacity_utilization,
 		}
 
-	def validation_step(self, batch: tuple, batch_idx: int, *args, **kwargs) -> Dict[str, Any]:  # pylint: disable=arguments-differ
+	def validation_step(  # pylint: disable=arguments-differ
+		self, batch: tuple, batch_idx: int, *args, **kwargs
+	) -> Dict[str, Any]:
 		"""
 		Validation step for one batch.
 
@@ -265,24 +290,27 @@ class IBModel(pl.LightningModule):
 		# Calculate classification accuracy
 		acc = (y_hat.argmax(dim=1) == y).float().mean()
 
-		# Calculate empirical compression (mutual info) if we have bottleneck layer output
-		z = outs[self.layer_to_optimize]
-		x_flat = x
-		if x.dim() > 2:
-			x_flat = x.view(x.size(0), -1)
-		z_flat = z
-		if z.dim() > 2:
-			z_flat = z.view(z.size(0), -1)
-		# Calculate kernel matrices
-		x_gram = rbf_kernel(x_flat, x_flat, sigma=calculate_kernel_width(x_flat, top_k=self.top_k))
-		z_gram = rbf_kernel(z_flat, z_flat, sigma=calculate_kernel_width(z_flat, top_k=self.top_k))
-		mutual_info = calculate_MI(x_gram, z_gram)
+		# Calculate empirical compression (mutual info) for logging.
+		# Wrap in no_grad() to avoid graph conflicts.
+		with torch.no_grad():
+			z = outs[self.layer_to_optimize]
+			x_flat = x if x.dim() <= 2 else x.view(x.size(0), -1)
+			z_flat = z if z.dim() <= 2 else z.view(z.size(0), -1)
+			x_gram = rbf_kernel(
+				x_flat, x_flat, sigma=calculate_kernel_width(x_flat, top_k=self.top_k)
+			)
+			z_gram = rbf_kernel(
+				z_flat, z_flat, sigma=calculate_kernel_width(z_flat, top_k=self.top_k)
+			)
+			mutual_info = calculate_MI(x_gram, z_gram)
 
-		# Calculate effective capacity utilization (ratio of original loss to log2(W))
-		# where W is the number of parameters in the model
+		# Calculate effective capacity utilization (ratio of original
+		# loss to log2(W)) where W is the number of parameters
 		total_params = sum(p.numel() for p in self.parameters())
 		log_w = torch.log2(torch.tensor(float(total_params)))
-		effective_capacity_utilization = val_loss / log_w if log_w > 0 else torch.tensor(0.0)
+		effective_capacity_utilization = (
+			val_loss.detach() / log_w if log_w > 0 else torch.tensor(0.0)
+		)
 
 		# Log metrics
 		self.log('val_loss', val_loss, on_step=False, on_epoch=True, prog_bar=True)
@@ -296,17 +324,21 @@ class IBModel(pl.LightningModule):
 		)
 
 		# Log to TensorBoard if available
-		if self.logger and hasattr(self.logger, 'experiment'):
-			self.logger.experiment.add_scalar('Loss/Validation', val_loss, self.global_step)
-			self.logger.experiment.add_scalar('Accuracy/Validation', acc, self.global_step)
-			self.logger.experiment.add_scalar(
-				'Metrics/EmpiricalCompression', mutual_info, self.global_step
-			)
-			self.logger.experiment.add_scalar(
-				'Metrics/EffectiveCapacityUtilization',
-				effective_capacity_utilization,
-				self.global_step,
-			)
+		if self.logger is not None:
+			experiment = getattr(self.logger, 'experiment', None)
+			if experiment is not None and hasattr(experiment, 'add_scalar'):
+				experiment.add_scalar('Loss/Validation', val_loss, self.global_step)
+				experiment.add_scalar('Accuracy/Validation', acc, self.global_step)
+				experiment.add_scalar(
+					'Metrics/EmpiricalCompression',
+					mutual_info,
+					self.global_step,
+				)
+				experiment.add_scalar(
+					'Metrics/EffectiveCapacityUtilization',
+					effective_capacity_utilization,
+					self.global_step,
+				)
 
 		return {
 			'val_loss': val_loss,
@@ -412,15 +444,20 @@ def train_model(
 	    train_dataloader: DataLoader for training data
 	    val_dataloader: DataLoader for validation data
 	    max_epochs: Maximum number of epochs to train
-	    accelerator: Accelerator to use for training ('auto', 'cpu', 'gpu', 'tpu', 'mps')
+	    accelerator: Accelerator to use for training
+	                 ('auto', 'cpu', 'gpu', 'tpu', 'mps')
 	    devices: Devices to use for training
 	    log_dir: Directory to save tensorboard logs
 	    experiment_name: Name of the experiment for tensorboard
 	    precision: Precision for training ('32-true', '16-mixed', etc.)
-	    log_every_n_steps: Log every n steps (defaults to 1 epoch length if None)
-	    enable_progress_bar: Whether to enable progress bars (default: False)
-	    experiment_id: Optional identifier for logging (used in callback)
-	    hyperparams: Optional dict of hyperparameters to log to TensorBoard
+	    log_every_n_steps: Log every n steps
+	                       (defaults to 1 epoch length if None)
+	    enable_progress_bar: Whether to enable progress bars
+	                         (default: False)
+	    experiment_id: Optional identifier for logging
+	                   (used in callback)
+	    hyperparams: Optional dict of hyperparameters to log
+	                 to TensorBoard
 	    **trainer_kwargs: Additional arguments to pass to the trainer
 
 	Returns:
@@ -446,7 +483,11 @@ def train_model(
 		enable_progress_bar=enable_progress_bar,
 		**trainer_kwargs,
 	)
-	trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
+	trainer.fit(
+		model,
+		train_dataloaders=train_dataloader,
+		val_dataloaders=val_dataloader,
+	)
 	logged_metrics = trainer.logged_metrics
 	results = {
 		'final_train_loss': logged_metrics.get(

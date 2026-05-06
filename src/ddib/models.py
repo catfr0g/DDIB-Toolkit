@@ -1,5 +1,5 @@
 """
-Contains some usefull utils for pytorch models creation
+Contains some useful utils for pytorch models creation.
 """
 
 from typing import List, Optional
@@ -10,7 +10,10 @@ import torchvision
 
 
 def create_simple_ffn(
-	input_size: int, hidden_sizes: List[int], output_size: int, dropout_rate: float = 0.1
+	input_size: int,
+	hidden_sizes: List[int],
+	output_size: int,
+	dropout_rate: float = 0.1,
 ) -> nn.Module:
 	"""
 	Create a simple feedforward neural network.
@@ -36,9 +39,11 @@ def create_simple_ffn(
 
 
 def forward_and_layer_outs(
-	model: nn.Module, input_tensor: torch.Tensor, layer_names: list[str]
+	model: nn.Module,
+	input_tensor: torch.Tensor,
+	layer_names: list[str],
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
-	"""Return results of forward pass and layer outputs of layers from specified names"""
+	"""Return results of forward pass and layer outputs of specified names."""
 	outputs = {}
 
 	def register_hook(name):
@@ -57,15 +62,19 @@ def forward_and_layer_outs(
 
 class ResNetWithBottleneck(nn.Module):
 	"""
-	ResNet model with configurable bottleneck layer between features and classifier.
+	ResNet model with configurable bottleneck layer between
+	features and classifier.
 
-	This is a wrapper around torchvision's ResNet that adds an optional bottleneck
-	layer between the feature extractor and classifier.
+	This is a wrapper around torchvision's ResNet that adds an
+	optional bottleneck layer between the feature extractor and
+	classifier.
 
 	Args:
-	    arch: Name of the ResNet architecture (e.g., 'resnet18', 'resnet34', etc.)
+	    arch: Name of the ResNet architecture
+	          (e.g., 'resnet18', 'resnet34', etc.)
 	    num_classes: Number of output classes
-	    bottleneck_width: Width of the layer between features and classifier
+	    bottleneck_width: Width of the layer between features
+	                      and classifier
 	    pretrained: Whether to use pretrained weights
 	"""
 
@@ -86,9 +95,12 @@ class ResNetWithBottleneck(nn.Module):
 		self.bottleneck = None
 		classifier_input_size = num_features
 		if bottleneck_width is not None:
-			# Group bottleneck components in a sequential for easier access via hooks
+			# Group bottleneck components in a sequential for
+			# easier access via hooks
 			self.bottleneck = nn.Sequential(
-				nn.Linear(num_features, bottleneck_width), nn.ReLU(inplace=True), nn.Dropout(0.5)
+				nn.Linear(num_features, bottleneck_width),
+				nn.ReLU(inplace=True),
+				nn.Dropout(0.5),
 			)
 			classifier_input_size = bottleneck_width
 		# Final classifier layer
@@ -98,9 +110,9 @@ class ResNetWithBottleneck(nn.Module):
 		"""Forward pass of the ResNet model with optional bottleneck."""
 		# Extract features using the ResNet backbone
 		x = self.resnet(x)
-		# Apply global average pooling to convert from 4D to 2D (if needed)
+		# Apply global average pooling to convert from 4D to 2D
 		if len(x.shape) > 2:
-			x = torch.flatten(x, start_dim=1)  # Flatten all dims after batch dim
+			x = torch.flatten(x, start_dim=1)
 		if self.bottleneck is not None:
 			x = self.bottleneck(x)
 		x = self.classifier(x)
@@ -109,15 +121,19 @@ class ResNetWithBottleneck(nn.Module):
 
 class VGGWithBottleneck(nn.Module):
 	"""
-	VGG model with configurable bottleneck layer between features and classifier.
+	VGG model with configurable bottleneck layer between
+	features and classifier.
 
-	This is a wrapper around torchvision's VGG that adds an optional bottleneck
-	layer between the feature extractor and classifier.
+	This is a wrapper around torchvision's VGG that adds an
+	optional bottleneck layer between the feature extractor and
+	classifier.
 
 	Args:
-	    arch: Name of the VGG architecture (e.g., 'vgg11', 'vgg16', etc.)
+	    arch: Name of the VGG architecture
+	          (e.g., 'vgg11', 'vgg16', etc.)
 	    num_classes: Number of output classes
-	    bottleneck_width: Width of the layer between features and classifier
+	    bottleneck_width: Width of the layer between features
+	                      and classifier
 	    pretrained: Whether to use pretrained weights
 	"""
 
@@ -138,7 +154,8 @@ class VGGWithBottleneck(nn.Module):
 		self.bottleneck = None
 		classifier_input_size = num_features
 		if bottleneck_width is not None:
-			# Group bottleneck components in a sequential for easier access via hooks
+			# Group bottleneck components in a sequential for
+			# easier access via hooks
 			self.bottleneck = nn.Sequential(
 				nn.Linear(num_features, bottleneck_width),
 				nn.ReLU(True),
@@ -165,15 +182,19 @@ class VGGWithBottleneck(nn.Module):
 
 class EfficientNetWithBottleneck(nn.Module):
 	"""
-	EfficientNet model with configurable bottleneck layer between features and classifier.
+	EfficientNet model with configurable bottleneck layer between
+	features and classifier.
 
-	This is a wrapper around torchvision's EfficientNet that adds an optional bottleneck
-	layer between the feature extractor and classifier.
+	This is a wrapper around torchvision's EfficientNet that adds
+	an optional bottleneck layer between the feature extractor and
+	classifier.
 
 	Args:
-	    arch: Name of the EfficientNet architecture (e.g., 'efficientnet_b0', 'efficientnet_b1', etc.)
+	    arch: Name of the EfficientNet architecture
+	          (e.g., 'efficientnet_b0', 'efficientnet_b1', etc.)
 	    num_classes: Number of output classes
-	    bottleneck_width: Width of the layer between features and classifier
+	    bottleneck_width: Width of the layer between features
+	                      and classifier
 	    pretrained: Whether to use pretrained weights
 	"""
 
@@ -188,14 +209,16 @@ class EfficientNetWithBottleneck(nn.Module):
 
 		# Load the pretrained EfficientNet model
 		self.efficient_net = getattr(torchvision.models, arch)(pretrained=pretrained)
-		# EfficientNet classifier is Sequential[Dropout, Linear], so get in_features from Linear layer
+		# EfficientNet classifier is Sequential[Dropout, Linear],
+		# so get in_features from Linear layer
 		num_features = self.efficient_net.classifier[1].in_features
 		self.efficient_net.classifier = nn.Identity()
 		# Add optional bottleneck layer between features and classifier
 		self.bottleneck = None
 		classifier_input_size = num_features
 		if bottleneck_width is not None:
-			# Group bottleneck components in a sequential for easier access via hooks
+			# Group bottleneck components in a sequential for
+			# easier access via hooks
 			self.bottleneck = nn.Sequential(
 				nn.Linear(num_features, bottleneck_width),
 				nn.ReLU(True),

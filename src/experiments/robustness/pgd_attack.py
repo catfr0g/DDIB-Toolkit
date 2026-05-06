@@ -76,11 +76,9 @@ class PGDAttack:
 
 		# Initialize perturbation
 		if random_start:
-			# Start from random point within epsilon-ball
 			delta = torch.empty_like(images).uniform_(-self.epsilon, self.epsilon)
 			delta = self._project(delta)
 		else:
-			# Start from zero perturbation
 			delta = torch.zeros_like(images)
 
 		delta.requires_grad = True
@@ -89,35 +87,31 @@ class PGDAttack:
 		optimizer = torch.optim.Adam([delta], lr=self.alpha)
 
 		# Iterative attack
-		for i in range(self.iterations):
+		for _ in range(self.iterations):
 			optimizer.zero_grad()
 
 			# Forward pass with perturbed images
-			adv_images = images + delta
-			adv_images = adv_images.clamp(0, 1)
-
-			# Compute loss
+			adv_images = (images + delta).clamp(0, 1)
 			outputs = self.model(adv_images)
 
 			if self.targeted:
-				# For targeted attack, minimize loss to target
 				loss = self.loss_fn(outputs, labels)
 			else:
-				# For untargeted attack, maximize loss (minimize negative loss)
 				loss = -self.loss_fn(outputs, labels)
 
 			# Backward pass
 			loss.backward()
 
-			# Update perturbation
+			# Update perturbation via optimizer
 			optimizer.step()
 
-			# Project back to epsilon-ball
-			delta = self._project(delta)
+			# Project delta in-place to keep it attached to the optimizer
+			with torch.no_grad():
+				delta.copy_(self._project(delta))
 
-		# Return final adversarial examples
-		adv_images = images + delta
-		return adv_images.clamp(0, 1)
+		# Return final adversarial examples (detached to avoid
+		# gradient graph conflicts during subsequent evaluation)
+		return (images + delta).clamp(0, 1).detach()
 
 	def _project(self, delta: torch.Tensor) -> torch.Tensor:
 		"""Project delta to the epsilon-ball using the specified norm."""
@@ -168,22 +162,22 @@ class PGDAttack:
 		all_preds = []
 
 		# Process in batches to avoid OOM
-		with torch.no_grad():
-			for i in range(0, total_samples, batch_size):
-				batch_images = images[i : i + batch_size].to(device)
-				batch_labels = labels[i : i + batch_size].to(device)
+		for i in range(0, total_samples, batch_size):
+			batch_images = images[i : i + batch_size].to(device)
+			batch_labels = labels[i : i + batch_size].to(device)
 
-				# Generate adversarial examples
-				adv_images = self.perturb(batch_images, batch_labels)
+			# Generate adversarial examples (requires gradients)
+			adv_images = self.perturb(batch_images, batch_labels)
 
-				# Evaluate on adversarial examples
+			# Evaluate on adversarial examples (no gradients needed)
+			with torch.no_grad():
 				outputs = self.model(adv_images)
 				preds = outputs.argmax(dim=1)
 
-				correct += (preds == batch_labels).sum().item()
+			correct += (preds == batch_labels).sum().item()
 
-				all_adv_images.append(adv_images.cpu())
-				all_preds.append(preds.cpu())
+			all_adv_images.append(adv_images.cpu())
+			all_preds.append(preds.cpu())
 
 		adversarial_accuracy = correct / total_samples
 

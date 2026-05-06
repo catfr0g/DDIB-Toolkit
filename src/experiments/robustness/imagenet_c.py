@@ -6,7 +6,7 @@ This module provides utilities to load and evaluate on ImageNet-C.
 """
 
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from loguru import logger
 import numpy as np

@@ -24,6 +24,7 @@ Usage:
         --output-dir results/robustness
 """
 
+from dataclasses import dataclass
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -32,7 +33,7 @@ from loguru import logger
 import numpy as np
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 import typer
 import yaml
 
@@ -41,7 +42,6 @@ from src.experiments.dataset_loading import load_cifar10_dataset
 from src.experiments.robustness.imagenet_c import (
 	CORRUPTION_TYPES,
 	SEVERITY_LEVELS,
-	ImageNetCCIFAR10Dataset,
 	create_cifar10_c_dataloader,
 )
 from src.experiments.robustness.metrics import (
@@ -50,7 +50,7 @@ from src.experiments.robustness.metrics import (
 	print_robustness_report,
 	save_metrics_to_json,
 )
-from src.experiments.robustness.pgd_attack import PGDAttack, evaluate_adversarial_robustness
+from src.experiments.robustness.pgd_attack import PGDAttack
 
 app = typer.Typer()
 
@@ -148,11 +148,210 @@ def load_model(
 	return model
 
 
+@dataclass
+class ModelResult:
+	model_name: str
+	results: Optional[Dict[str, Any]] = None
+	error: Optional[str] = None
+	skipped: bool = False
+
+
+def _train_and_evaluate_worker(
+	args: Tuple[Dict[str, Any], Dict[str, Any], str, bool, bool, str],
+) -> ModelResult:
+	"""
+	Worker function for parallel training and evaluation.
+	Runs in a separate process.
+	"""
+	(
+		model_config,
+		training_defaults,
+		data_dir_str,
+		skip_training,
+		skip_validated,
+		output_dir_str,
+	) = args
+
+	data_dir = Path(data_dir_str)
+	output_dir = Path(output_dir_str) if output_dir_str else None
+
+	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+	model_name = model_config['name']
+
+	try:
+		model, test_loader, name = _train_model_in_worker(
+			model_config=model_config,
+			training_defaults=training_defaults,
+			data_dir=data_dir,
+			device=device,
+			skip_training=skip_training,
+			skip_validated=skip_validated,
+			output_dir=output_dir,
+		)
+
+		if model is None:
+			return ModelResult(model_name=name, skipped=True)
+
+		eval_config = {
+			'eval_batch_size': 64,
+			'eval_num_workers': 2,
+		}
+
+		results = evaluate_model_robustness(
+			model=model,
+			model_name=name,
+			data_dir=data_dir,
+			output_dir=output_dir,
+			test_loader=test_loader,
+			eval_config=eval_config,
+		)
+
+		return ModelResult(model_name=name, results=results)
+
+	except Exception as e:
+		return ModelResult(model_name=model_name, error=str(e))
+
+
+def _train_model_in_worker(
+	model_config: Dict[str, Any],
+	training_defaults: Dict[str, Any],
+	data_dir: Path,
+	device: torch.device,
+	skip_training: bool = False,
+	skip_validated: bool = False,
+	output_dir: Optional[Path] = None,
+) -> Tuple[nn.Module, DataLoader, str]:
+	"""
+	Train a model in a worker process (called by parallel executor).
+	"""
+	import random
+
+	import numpy as np
+
+	from src.ddib.trainer import IBModel, train_model
+	from src.experiments.config import MODELS_DIR
+
+	model_name = model_config['name']
+	model_arch = model_config['model_arch']
+	bottleneck_width = model_config.get('bottleneck_width')
+	beta = model_config.get('beta', 1.0)
+	seed = model_config.get('seed', 42)
+
+	training_params = get_training_params(model_config, training_defaults)
+	num_epochs = training_params.get('num_epochs', 100)
+	model_path = MODELS_DIR / f'{model_name}_epochs_{num_epochs}.pt'
+
+	if skip_validated and output_dir is not None:
+		result_file = output_dir / model_name / 'robustness_results.json'
+		if result_file.exists():
+			with open(result_file, 'r', encoding='utf-8') as f:
+				_ = json.load(f)
+			return None, None, model_name
+
+	if model_path.exists():
+		if skip_training:
+			_, _, test_loader = load_cifar10_dataset(
+				data_dir=data_dir,
+				val_batch_size=training_params.get('val_batch_size', 128),
+				test_batch_size=training_params.get('test_batch_size', 128),
+				train_val_split_ratio=training_params.get('train_val_split_ratio', 0.8),
+				num_workers=training_params.get('num_workers', 4),
+				download=True,
+			)
+			model = load_model(
+				model_arch=model_arch,
+				bottleneck_width=bottleneck_width,
+				model_path=model_path,
+				device=device,
+			)
+			return model, test_loader, model_name
+		else:
+			_, _, test_loader = load_cifar10_dataset(
+				data_dir=data_dir,
+				val_batch_size=training_params.get('val_batch_size', 128),
+				test_batch_size=training_params.get('test_batch_size', 128),
+				train_val_split_ratio=training_params.get('train_val_split_ratio', 0.8),
+				num_workers=training_params.get('num_workers', 4),
+				download=True,
+			)
+			model = load_model(
+				model_arch=model_arch,
+				bottleneck_width=bottleneck_width,
+				model_path=model_path,
+				device=device,
+			)
+			return model, test_loader, model_name
+
+	random.seed(seed)
+	np.random.seed(seed)
+	torch.manual_seed(seed)
+	if torch.cuda.is_available():
+		torch.cuda.manual_seed_all(seed)
+
+	print(f'[{model_name}] Training model')
+	print(f'  Architecture: {model_arch}')
+	print(f'  Bottleneck width: {bottleneck_width}')
+	print(f'  Beta: {beta}')
+	print(f'  Seed: {seed}')
+	print(f'  Epochs: {num_epochs}')
+
+	val_loader, test_loader, _ = load_cifar10_dataset(
+		data_dir=data_dir,
+		val_batch_size=training_params.get('val_batch_size', 128),
+		test_batch_size=training_params.get('test_batch_size', 128),
+		train_val_split_ratio=training_params.get('train_val_split_ratio', 0.8),
+		num_workers=training_params.get('num_workers', 4),
+		download=True,
+	)
+
+	input_dim = (3, 32, 32)
+	model = IBModel(
+		input_dim=input_dim,
+		encoder_arch=model_arch,
+		bottleneck_width=bottleneck_width,
+		decoder_arch='conv',
+		num_classes=10,
+		beta=beta,
+	)
+
+	model = model.to(device)
+
+	best_val_loss = float('inf')
+	best_model_state = None
+
+	for epoch in range(num_epochs):
+		print(f'[{model_name}] Epoch {epoch + 1}/{num_epochs}')
+		val_loss = train_model(
+			model=model,
+			device=device,
+			val_loader=val_loader,
+			num_epochs=1,
+			lr=training_params.get('lr', 0.001),
+			beta=beta,
+			seed=seed,
+		)
+
+		if val_loss < best_val_loss:
+			best_val_loss = val_loss
+			best_model_state = model.state_dict().copy()
+
+	if best_model_state is not None:
+		model.load_state_dict(best_model_state)
+
+	torch.save(model.state_dict(), model_path)
+	print(f'[{model_name}] Model saved to {model_path}')
+
+	return model, test_loader, model_name
+
+
 def train_model_from_config(
 	model_config: Dict[str, Any],
 	training_defaults: Dict[str, Any],
 	data_dir: Path,
 	device: torch.device,
+	skip_training: bool = False,
+	skip_validated: bool = False,
+	output_dir: Optional[Path] = None,
 ) -> Tuple[nn.Module, DataLoader, str]:
 	"""
 	Train a model from scratch using configuration and return it with test loader.
@@ -162,11 +361,13 @@ def train_model_from_config(
 	    training_defaults: Default training parameters
 	    data_dir: Directory containing data
 	    device: Device for training
+	    skip_training: Skip training if model already exists
+	    skip_validated: Skip evaluation if results already exist
+	    output_dir: Output directory for results
 
 	Returns:
 	    Tuple of (trained model, test loader, model name)
 	"""
-	import os
 	import random
 
 	from src.ddib.trainer import IBModel, train_model
@@ -181,6 +382,55 @@ def train_model_from_config(
 	# Get training parameters
 	training_params = get_training_params(model_config, training_defaults)
 	num_epochs = training_params.get('num_epochs', 100)
+	model_path = MODELS_DIR / f'{model_name}_epochs_{num_epochs}.pt'
+
+	# Check if skip_validated - load existing results if present
+	if skip_validated and output_dir is not None:
+		result_file = output_dir / model_name / 'robustness_results.json'
+		if result_file.exists():
+			logger.info(
+				f'[{model_name}] Found existing results at {result_file}, skipping evaluation'
+			)
+			with open(result_file, 'r', encoding='utf-8') as f:
+				_ = json.load(f)
+			return None, None, model_name
+
+	# Check if model already exists
+	if model_path.exists():
+		if skip_training:
+			logger.info(f'[{model_name}] Found existing model at {model_path}, skipping training')
+			_, _, test_loader = load_cifar10_dataset(
+				data_dir=data_dir,
+				val_batch_size=training_params.get('val_batch_size', 128),
+				test_batch_size=training_params.get('test_batch_size', 128),
+				train_val_split_ratio=training_params.get('train_val_split_ratio', 0.8),
+				num_workers=training_params.get('num_workers', 4),
+				download=True,
+			)
+			model = load_model(
+				model_arch=model_arch,
+				bottleneck_width=bottleneck_width,
+				model_path=model_path,
+				device=device,
+			)
+			return model, test_loader, model_name
+		else:
+			logger.info(f'[{model_name}] Found existing model, loading')
+			_, _, test_loader = load_cifar10_dataset(
+				data_dir=data_dir,
+				val_batch_size=training_params.get('val_batch_size', 128),
+				test_batch_size=training_params.get('test_batch_size', 128),
+				train_val_split_ratio=training_params.get('train_val_split_ratio', 0.8),
+				num_workers=training_params.get('num_workers', 4),
+				download=True,
+			)
+			model = load_model(
+				model_arch=model_arch,
+				bottleneck_width=bottleneck_width,
+				model_path=model_path,
+				device=device,
+			)
+			return model, test_loader, model_name
 
 	# Set seeds
 	random.seed(seed)
@@ -612,6 +862,21 @@ def main(
 		'--skip-pgd',
 		help='Skip PGD adversarial evaluation',
 	),
+	skip_training: bool = typer.Option(
+		False,
+		'--skip-training',
+		help='Skip training if model already exists under models directory',
+	),
+	skip_validated: bool = typer.Option(
+		False,
+		'--skip-validated',
+		help='Skip evaluation if results already exist under output directory',
+	),
+	max_concurrent: int = typer.Option(
+		-1,
+		'--max-concurrent',
+		help='Maximum concurrent processes (-1 for unlimited)',
+	),
 ):
 	"""
 	Evaluate model robustness on corruptions and adversarial examples.
@@ -731,6 +996,13 @@ def main(
 
 		logger.info(f'Training and evaluating {len(models_config)} models...')
 
+		if max_concurrent > 0:
+			logger.warning(
+				'Parallel execution requested but not yet implemented. '
+				'Running sequentially.'
+			)
+
+		# Sequential execution (also runs when max_concurrent <= 0 or > 0 for now)
 		for model_config in models_config:
 			model_name = model_config['name']
 			logger.info(f'\n{"=" * 60}')
@@ -745,7 +1017,15 @@ def main(
 					training_defaults=training_defaults,
 					data_dir=data_dir,
 					device=device,
+					skip_training=skip_training,
+					skip_validated=skip_validated,
+					output_dir=output_dir,
 				)
+
+				# Skip if model was skipped
+				if model is None:
+					logger.info(f'[{name}] Skipped due to existing model/results')
+					continue
 
 				# Evaluate robustness
 				results = evaluate_model_robustness(
