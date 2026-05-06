@@ -1,0 +1,38 @@
+
+EfficientNet Numerical Analysis Summary
+========================================
+
+Total experiments: 865
+Best accuracy: 81.9900
+Mean accuracy: 60.7800
+Best compression: 6.8271
+Mean compression: 8.3389
+
+Key Findings:
+1. Log-beta correlation with accuracy: -0.8111
+2. Width correlation with accuracy: 0.0659
+3. Linear Regression CV R2: 0.6564
+4. Random Forest CV R2: 0.9503
+5. Pareto-optimal configurations: 6
+6. Clusters identified: 4
+
+Statistical Relationship Analysis:
+  Accuracy:
+  - Spearman log(beta) vs accuracy: r=-0.7273, p=1.95e-131
+  - Spearman width vs accuracy:     r=0.2267, p=1.05e-10
+  - Partial log(beta)|width:        r=-0.8131, p=4.34e-188
+  - Partial width|log(beta):        r=0.1199, p=7.17e-04
+   - ANOVA beta: F=84.65, p=3.34e-157
+   - ANOVA width: F=84.65, p=3.34e-157
+   - ANOVA beta:width: F=0.08, p=1.00e+00
+  - Model R2: 0.6723
+
+  Compression:
+  - Spearman log(beta) vs compression: r=0.2812, p=7.07e-16
+  - Spearman width vs compression:     r=-0.0269, p=4.50e-01
+  - Partial log(beta)|width:           r=0.2879, p=1.33e-16
+  - Partial width|log(beta):           r=0.0120, p=7.36e-01
+   - ANOVA beta: F=3.74, p=5.74e-07
+   - ANOVA width: F=3.74, p=5.74e-07
+   - ANOVA beta:width: F=0.00, p=1.00e+00
+  - Model R2: 0.0832
