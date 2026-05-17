@@ -61,6 +61,10 @@ BASELINE_PATH = PROJECT_ROOT / 'results' / 'baseline' / 'grid_search_results_fin
 OUTPUT_DIR = PROJECT_ROOT / 'reports' / 'grid_search'
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+import sys
+sys.stdout = open(OUTPUT_DIR / 'analysis.log', 'w', encoding='utf-8')
+print(f'All output written to: {OUTPUT_DIR / "analysis.log"}', file=sys.stderr)
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 
@@ -132,7 +136,7 @@ print(f'Mean accuracy: {df["test_accuracy"].mean():.2f}%, Best: {df["test_accura
 print('\nBEST CONFIGURATIONS')
 for _, row in df.nlargest(10, 'test_accuracy').iterrows():
 	print(
-		f'  {row["test_accuracy"]:.2f}% | {row["model_arch"]} | w={row["bottleneck_width"]} | β={row["beta"]:.6f} | seed={row["seed"]}'
+		f'  {row["test_accuracy"]:.2f}% | {row["model_arch"]} | w={row["bottleneck_width"]} | beta={row["beta"]:.6f} | seed={row["seed"]}'
 	)
 
 print('\nSTATISTICS BY ARCHITECTURE')
@@ -624,12 +628,17 @@ print(
 # Relationship analysis
 acc_rel = analyze_beta_metric_relationship(df_no_baseline, 'test_accuracy')
 comp_rel = analyze_beta_metric_relationship(df_no_baseline, 'final_empirical_compression')
-print(
-	f'\nAccuracy: Spearman log(β) r={acc_rel["beta_spearman_corr"]:.4f}, width r={acc_rel["width_spearman_corr"]:.4f}, R²={acc_rel["r_squared"]:.4f}'
-)
-print(
-	f'Compression: Spearman log(β) r={comp_rel["beta_spearman_corr"]:.4f}, width r={comp_rel["width_spearman_corr"]:.4f}, R²={comp_rel["r_squared"]:.4f}'
-)
+print(f'\nTwo-Way ANOVA (beta x width interaction) — Accuracy:')
+anova_acc = acc_rel['anova_table']
+for effect, vals in anova_acc.items():
+	print(f'  {effect}: F={vals["F"]:.2f}, p={vals["p"]:.2e}, df={vals["df"]}')
+print(f'Model R² = {acc_rel["r_squared"]:.4f}')
+
+print(f'\nTwo-Way ANOVA (beta x width interaction) — Compression:')
+anova_comp = comp_rel['anova_table']
+for effect, vals in anova_comp.items():
+	print(f'  {effect}: F={vals["F"]:.2f}, p={vals["p"]:.2e}, df={vals["df"]}')
+print(f'Model R² = {comp_rel["r_squared"]:.4f}')
 
 # Bootstrap CI plots
 fig, ax = plt.subplots(figsize=(10, 6))
@@ -1101,4 +1110,6 @@ Spearman comp: logβ r={comp_rel['beta_spearman_corr']:.4f}, w r={comp_rel['widt
 """
 (OUTPUT_DIR / 'analysis_summary.txt').write_text(summary_text, encoding='utf-8')
 print('\nSaved: analysis_summary.txt')
-print(f'\nAnalysis complete! Results: {OUTPUT_DIR}')
+import sys
+print(f'\nAnalysis complete! Results: {OUTPUT_DIR}', file=sys.__stdout__)
+sys.stdout.close()

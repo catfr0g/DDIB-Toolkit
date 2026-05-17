@@ -22,17 +22,17 @@ Statistical Relationship Analysis:
   - Spearman width vs accuracy:     r=0.2419, p=1.82e-08
   - Partial log(beta)|width:        r=-0.7610, p=6.53e-101
   - Partial width|log(beta):        r=0.1300, p=2.76e-03
-   - ANOVA beta: F=38.26, p=1.44e-75
-   - ANOVA width: F=38.26, p=1.44e-75
-   - ANOVA beta:width: F=0.03, p=1.00e+00
-  - Model R2: 0.5977
+   - ANOVA beta: F=124.21, p=2.26e-121
+   - ANOVA width: F=8.17, p=2.25e-09
+   - ANOVA beta:width: F=0.65, p=9.86e-01
+  - Model R2: 0.7535
 
   Compression:
   - Spearman log(beta) vs compression: r=0.3647, p=4.75e-18
   - Spearman width vs compression:     r=-0.4131, p=3.54e-23
   - Partial log(beta)|width:           r=0.3771, p=2.78e-19
   - Partial width|log(beta):           r=-0.3058, p=6.87e-13
-   - ANOVA beta: F=9.03, p=3.36e-20
-   - ANOVA width: F=9.03, p=3.36e-20
-   - ANOVA beta:width: F=0.18, p=1.00e+00
-  - Model R2: 0.2746
+   - ANOVA beta: F=15.43, p=9.38e-24
+   - ANOVA width: F=13.77, p=3.73e-16
+   - ANOVA beta:width: F=0.67, p=9.79e-01
+  - Model R2: 0.4036

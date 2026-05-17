@@ -422,64 +422,74 @@ def analyze_beta_metric_relationship(
 
 	partial_width_corr, partial_width_p = pearsonr(residuals_width, residuals_metric2)
 
-	# Two-way ANOVA for interaction effect (using scipy)
-	# Create categorical versions
+	# Two-way ANOVA using OLS (proper one-hot encoding)
 	df_anova = df_analysis[[beta_col, width_col, metric_col]].copy()
-	df_anova['beta_cat'] = df_anova[beta_col].astype('category').cat.codes
-	df_anova['width_cat'] = df_anova[width_col].astype('category').cat.codes
 
-	# Use sklearn for two-way ANOVA-like analysis
-	from sklearn.linear_model import LinearRegression
+	# One-hot encode categorical variables
+	beta_dummies = pd.get_dummies(df_anova[beta_col].astype('category'), prefix='beta', drop_first=True)
+	width_dummies = pd.get_dummies(df_anova[width_col].astype('category'), prefix='width', drop_first=True)
 
-	# Main effects model
-	X_main = df_anova[['beta_cat', 'width_cat']].values
 	y = df_anova[metric_col].values
+	n = len(df_anova)
+
+	# Model with only beta
+	X_beta = beta_dummies.values.astype(float)
+	lr_beta = LinearRegression().fit(X_beta, y)
+	ss_beta = np.sum((lr_beta.predict(X_beta) - y.mean()) ** 2)
+	ss_resid_beta = np.sum((y - lr_beta.predict(X_beta)) ** 2)
+
+	# Model with only width
+	X_width = width_dummies.values.astype(float)
+	lr_width = LinearRegression().fit(X_width, y)
+	ss_width = np.sum((lr_width.predict(X_width) - y.mean()) ** 2)
+
+	# Model with both main effects
+	X_main = np.column_stack([beta_dummies.values.astype(float), width_dummies.values.astype(float)])
 	lr_main = LinearRegression().fit(X_main, y)
 	ss_main = np.sum((lr_main.predict(X_main) - y.mean()) ** 2)
 
-	# Interaction model
-	X_inter = np.column_stack(
-		[
-			df_anova['beta_cat'],
-			df_anova['width_cat'],
-			df_anova['beta_cat'] * df_anova['width_cat'],
-		]
-	)
+	# Model with interaction
+	interaction_terms = beta_dummies.values.astype(float)[:, :, None] * width_dummies.values.astype(float)[:, None, :]
+	interaction_terms = interaction_terms.reshape(n, -1)
+	X_inter = np.column_stack([X_main, interaction_terms])
 	lr_inter = LinearRegression().fit(X_inter, y)
 	ss_inter = np.sum((lr_inter.predict(X_inter) - y.mean()) ** 2)
 
-	# Residuals
+	# Residuals from full model
 	ss_resid = np.sum((y - lr_inter.predict(X_inter)) ** 2)
-	ss_total = np.sum((y - y.mean()) ** 2)
 
 	# Degrees of freedom
-	n_beta = df_anova['beta_cat'].nunique()
-	n_width = df_anova['width_cat'].nunique()
-	n = len(df_anova)
-
+	n_beta = beta_dummies.shape[1] + 1  # categories minus reference
+	n_width = width_dummies.shape[1] + 1
 	df_beta = n_beta - 1
 	df_width = n_width - 1
 	df_inter = df_beta * df_width
-	df_resid = n - (n_beta * n_width) - 1
+	df_resid = n - (n_beta * n_width)
+
+	# Type II sums of squares (each main effect adjusted for the other)
+	ss_beta_adj = ss_main - ss_width
+	ss_width_adj = ss_main - ss_beta
+	ss_inter = ss_inter - ss_main
 
 	# Mean squares
-	ms_beta = ss_main / (df_beta + df_width) if (df_beta + df_width) > 0 else 0
-	ms_inter = (ss_inter - ss_main) / df_inter if df_inter > 0 else 0
-	ms_resid = ss_resid / df_resid if df_resid > 0 else 1
+	ms_beta = ss_beta_adj / df_beta if df_beta > 0 else 0
+	ms_width = ss_width_adj / df_width if df_width > 0 else 0
+	ms_inter = ss_inter / df_inter if df_inter > 0 else 0
+	ms_resid = ss_resid / df_resid if df_resid > 0 else 0
 
 	# F-statistics
 	f_beta = ms_beta / ms_resid if ms_resid > 0 else 0
-	f_width = ms_beta / ms_resid if ms_resid > 0 else 0
+	f_width = ms_width / ms_resid if ms_resid > 0 else 0
 	f_inter = ms_inter / ms_resid if ms_resid > 0 else 0
 
 	# P-values
-	p_beta = stats.f.sf(f_beta, df_beta + df_width, df_resid) if df_resid > 0 else 1
-	p_width = stats.f.sf(f_width, df_beta + df_width, df_resid) if df_resid > 0 else 1
+	p_beta = stats.f.sf(f_beta, df_beta, df_resid) if df_resid > 0 else 1
+	p_width = stats.f.sf(f_width, df_width, df_resid) if df_resid > 0 else 1
 	p_inter = stats.f.sf(f_inter, df_inter, df_resid) if df_resid > 0 else 1
 
 	anova_results = {
-		'beta': {'F': f_beta, 'p': p_beta, 'df': df_beta + df_width},
-		'width': {'F': f_width, 'p': p_width, 'df': df_beta + df_width},
+		'beta': {'F': f_beta, 'p': p_beta, 'df': df_beta},
+		'width': {'F': f_width, 'p': p_width, 'df': df_width},
 		'beta:width': {'F': f_inter, 'p': p_inter, 'df': df_inter},
 	}
 

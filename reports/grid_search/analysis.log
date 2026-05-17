@@ -1,0 +1,365 @@
+Loading data from: C:\Users\Michael\Documents\projects\DDIB-Toolkit\results\grid_search\grid_search_results_final.json
+Loaded 528 main, 48 baseline (excluding EfficientNet)
+Total: 576 experiments
+
+============================================================
+PART 1: DESCRIPTIVE ANALYSIS
+============================================================
+
+Total experiments: 576
+Models: <StringArray>
+['resnet18', 'vgg11']
+Length: 2, dtype: str
+Beta range: [0.0, 100.0]
+Mean accuracy: 57.19%, Best: 86.25%
+
+BEST CONFIGURATIONS
+  86.25% | vgg11 | w=256 | beta=0.000000 | seed=1984
+  86.20% | vgg11 | w=128 | beta=0.000001 | seed=12
+  86.18% | vgg11 | w=128 | beta=0.000100 | seed=12
+  86.06% | vgg11 | w=128 | beta=0.000000 | seed=1984
+  86.06% | vgg11 | w=256 | beta=0.000001 | seed=42
+  86.05% | vgg11 | w=1024 | beta=0.000000 | seed=12
+  86.02% | vgg11 | w=256 | beta=0.000100 | seed=1984
+  86.01% | vgg11 | w=128 | beta=0.000001 | seed=42
+  86.01% | vgg11 | w=256 | beta=0.000000 | seed=1984
+  86.01% | vgg11 | w=512 | beta=0.000000 | seed=12
+
+STATISTICS BY ARCHITECTURE
+           test_accuracy               ...       final_train_loss final_val_loss
+                    mean    std   min  ... count             mean           mean
+model_arch                             ...                                      
+resnet18           64.60  31.66   9.3  ...   288            81.75           1.10
+vgg11              49.77  36.52  10.0  ...   288            84.08          16.19
+
+[2 rows x 7 columns]
+
+STATISTICS BY WIDTH
+                 test_accuracy  ... final_empirical_compression
+                          mean  ...                        mean
+bottleneck_width                ...                            
+16                       41.54  ...                        8.64
+32                       52.25  ...                        8.59
+64                       58.18  ...                        8.56
+128                      59.81  ...                        8.56
+256                      62.30  ...                        8.48
+512                      60.57  ...                        8.39
+1024                     61.21  ...                        8.38
+2048                     61.63  ...                        8.37
+
+[8 rows x 7 columns]
+
+EFFECT OF BETA
+             test_accuracy                ...       final_train_loss final_val_loss
+                      mean    std    min  ... count             mean           mean
+beta                                      ...                                      
+0.000000e+00         79.22  17.43  10.00  ...    48             0.32           0.83
+1.000000e-08         77.74  20.14  10.00  ...    48             0.36           0.85
+1.000000e-07         81.98   9.62  32.13  ...    48             0.27           0.77
+1.000000e-06         80.70  13.44  10.00  ...    48             0.30           0.79
+1.000000e-05         80.91  13.51  10.00  ...    48             0.29           0.78
+1.000000e-04         82.97   5.30  55.42  ...    48             0.26           0.75
+1.000000e-03         73.89  24.95  10.00  ...    48             0.49           0.93
+1.000000e-02         54.52  36.42  10.00  ...    48             1.10           1.30
+1.000000e-01         39.32  35.99  10.00  ...    48             2.28           1.59
+1.000000e+00         14.11  12.24  10.00  ...    48            10.93           2.21
+1.000000e+01         10.67   1.67   9.30  ...    48            89.62          96.93
+1.000000e+02         10.21   0.65  10.00  ...    48           878.39           2.33
+
+[12 rows x 7 columns]
+
+BUILDING HEATMAPS
+Saved: heatmap_accuracy_width_beta.png
+Saved: heatmap_loss_width_beta.png
+Saved: heatmap_compression_width_beta.png
+Saved: heatmap_capacity_width_beta.png
+Saved: scatter_acc_compression_capacity.png
+Saved: scatter_acc_compression.png
+Saved: accuracy_vs_beta.png
+Saved: compression_vs_beta.png
+Saved: accuracy_vs_beta_errorbars.png
+Saved: compression_vs_beta_errorbars.png
+Saved: accuracy_distribution.png
+Saved: train_vs_val_loss.png
+Saved: compression_metrics.png
+
+--- resnet18 (288 exp, mean=64.60%, best=84.65%) ---
+Saved: heatmap_accuracy_resnet18.png
+Saved: heatmap_loss_resnet18.png
+Saved: heatmap_compression_resnet18.png
+Saved: heatmap_capacity_resnet18.png
+  Saved scatter
+  Saved scatter2
+  Saved accuracy_vs_beta
+  Saved compression_vs_beta
+  Saved accuracy_vs_beta_errorbars
+  Saved compression_vs_beta_errorbars
+
+--- vgg11 (288 exp, mean=49.77%, best=86.25%) ---
+Saved: heatmap_accuracy_vgg11.png
+Saved: heatmap_loss_vgg11.png
+Saved: heatmap_compression_vgg11.png
+Saved: heatmap_capacity_vgg11.png
+  Saved scatter
+  Saved scatter2
+  Saved accuracy_vs_beta
+  Saved compression_vs_beta
+  Saved accuracy_vs_beta_errorbars
+  Saved compression_vs_beta_errorbars
+
+STABILITY BY SEED
+    model_arch  bottleneck_width  beta  mean_acc  std_acc
+163      vgg11               512  0.01     35.26    43.75
+175      vgg11              1024  0.01     35.23    43.69
+162      vgg11               512  0.00     60.34    43.60
+187      vgg11              2048  0.01     35.11    43.30
+108      vgg11                32  0.00     59.42    42.81
+109      vgg11                32  0.00     34.71    42.80
+151      vgg11               256  0.01     59.14    42.59
+20    resnet18                32  0.10     33.10    40.02
+126      vgg11                64  0.00     53.85    39.17
+114      vgg11                32  0.00     49.41    37.55
+
+Saved: summary_by_config.csv
+Saved: analysis_report.txt
+
+============================================================
+PART 2: NUMERICAL ANALYSIS
+============================================================
+
+Correlation Matrix:
+                                       test_accuracy  ...  final_effective_capacity_utilization
+test_accuracy                                 1.000  ...                                -0.064
+final_empirical_compression                  -0.557  ...                                 0.045
+beta                                         -0.452  ...                                 0.003
+bottleneck_width                              0.088  ...                                -0.031
+final_val_loss                               -0.064  ...                                 1.000
+final_effective_capacity_utilization         -0.064  ...                                 1.000
+
+[6 rows x 6 columns]
+Saved: correlation_matrix.png
+
+--- Bootstrap CI: Accuracy ---
+   beta   mean  ci_lower  ci_upper   std  n
+  0.000 77.738    71.533    82.790 2.872 48
+  0.000 81.985    78.872    84.292 1.378 48
+  0.000 80.702    76.366    83.930 1.923 48
+  0.000 80.911    76.579    84.178 1.936 48
+  0.000 82.966    81.309    84.183 0.748 48
+  0.001 73.895    66.517    80.367 3.541 48
+  0.010 54.524    45.083    63.924 5.142 48
+  0.100 39.317    29.042    49.624 5.117 48
+  1.000 14.109    11.123    17.859 1.733 48
+ 10.000 10.670    10.268    11.190 0.236 48
+100.000 10.211    10.053    10.411 0.093 48
+
+--- Bootstrap CI: Compression ---
+   beta  mean  ci_lower  ci_upper   std  n
+  0.000 8.435     8.375     8.495 0.031 48
+  0.000 8.432     8.371     8.494 0.031 48
+  0.000 8.418     8.359     8.478 0.031 48
+  0.000 8.419     8.361     8.479 0.030 48
+  0.000 8.426     8.367     8.487 0.030 48
+  0.001 8.381     8.263     8.472 0.054 48
+  0.010 8.497     8.429     8.566 0.035 48
+  0.100 8.430     8.320     8.534 0.054 48
+  1.000 8.658     8.593     8.711 0.030 48
+ 10.000 8.702     8.668     8.728 0.016 48
+100.000 8.725     8.703     8.742 0.010 48
+
+--- Bootstrap CI (with baseline): Accuracy ---
+   beta   mean  ci_lower  ci_upper   std  n
+  0.000 79.220    73.925    83.429 2.451 48
+  0.000 77.738    71.533    82.790 2.872 48
+  0.000 81.985    78.872    84.292 1.378 48
+  0.000 80.702    76.366    83.930 1.923 48
+  0.000 80.911    76.579    84.178 1.936 48
+  0.000 82.966    81.309    84.183 0.748 48
+  0.001 73.895    66.517    80.367 3.541 48
+  0.010 54.524    45.083    63.924 5.142 48
+  0.100 39.317    29.042    49.624 5.117 48
+  1.000 14.109    11.123    17.859 1.733 48
+ 10.000 10.670    10.268    11.190 0.236 48
+100.000 10.211    10.053    10.411 0.093 48
+
+--- Bootstrap CI (with baseline): Compression ---
+   beta  mean  ci_lower  ci_upper   std  n
+  0.000 8.420     8.362     8.482 0.031 48
+  0.000 8.435     8.375     8.495 0.031 48
+  0.000 8.432     8.371     8.494 0.031 48
+  0.000 8.418     8.359     8.478 0.031 48
+  0.000 8.419     8.361     8.479 0.030 48
+  0.000 8.426     8.367     8.487 0.030 48
+  0.001 8.381     8.263     8.472 0.054 48
+  0.010 8.497     8.429     8.566 0.035 48
+  0.100 8.430     8.320     8.534 0.054 48
+  1.000 8.658     8.593     8.711 0.030 48
+ 10.000 8.702     8.668     8.728 0.016 48
+100.000 8.725     8.703     8.742 0.010 48
+
+--- Significant Beta Regions: Accuracy ---
+ beta_from  beta_to  mean_a  mean_b   diff  significant  cohens_d
+     0.000    0.000  77.738  81.985 -4.248        False    -0.269
+     0.000    0.000  81.985  80.702  1.282        False     0.110
+     0.000    0.000  80.702  80.911 -0.208        False    -0.015
+     0.000    0.000  80.911  82.966 -2.056        False    -0.200
+     0.000    0.001  82.966  73.895  9.072         True     0.503
+     0.001    0.010  73.895  54.524 19.371         True     0.621
+     0.010    0.100  54.524  39.317 15.207         True     0.420
+     0.100    1.000  39.317  14.109 25.208         True     0.938
+     1.000   10.000  14.109  10.670  3.439         True     0.394
+    10.000  100.000  10.670  10.211  0.459         True     0.362
+
+--- Significant Beta Regions: Compression ---
+ beta_from  beta_to  mean_a  mean_b   diff  significant  cohens_d
+     0.000    0.000   8.435   8.432  0.003        False     0.014
+     0.000    0.000   8.432   8.418  0.014        False     0.065
+     0.000    0.000   8.418   8.419 -0.001        False    -0.007
+     0.000    0.000   8.419   8.426 -0.007        False    -0.033
+     0.000    0.001   8.426   8.381  0.045        False     0.147
+     0.001    0.010   8.381   8.497 -0.116        False    -0.367
+     0.010    0.100   8.497   8.430  0.068        False     0.212
+     0.100    1.000   8.430   8.658 -0.228         True    -0.747
+     1.000   10.000   8.658   8.702 -0.044        False    -0.261
+    10.000  100.000   8.702   8.725 -0.023        False    -0.255
+
+Two-Way ANOVA (beta x width interaction) — Accuracy:
+  beta: F=124.21, p=2.26e-121, df=10
+  width: F=8.17, p=2.25e-09, df=7
+  beta:width: F=0.65, p=9.86e-01, df=70
+Model R² = 0.7535
+
+Two-Way ANOVA (beta x width interaction) — Compression:
+  beta: F=15.43, p=9.38e-24, df=10
+  width: F=13.77, p=3.73e-16, df=7
+  beta:width: F=0.67, p=9.79e-01, df=70
+Model R² = 0.4036
+Saved: bootstrap_accuracy_ci.png
+Saved: bootstrap_compression_ci.png
+Saved: bootstrap_accuracy_ci_vs_baseline.png
+Saved: bootstrap_compression_ci_vs_baseline.png
+
+--- Pairwise Significance: Accuracy ---
+Saved: pairwise_significance_accuracy.png
+
+--- Linear Regression ---
+Using 528 experiments (excl. baseline)
+
+--- Predicting Test Accuracy ---
+R2 Score: 0.5821
+RMSE: 22.8980
+
+Coefficients:
+  log_beta: -8.4937
+  bottleneck_width: 0.0045
+  Intercept: 27.3917
+
+Cross-validation R2: 0.4623 (+/- 0.5183)
+
+Ridge R2: 0.5821
+Ridge Coefficients: log_beta=-8.4921, bottleneck_width=0.0045
+
+--- Predicting Empirical Compression ---
+R2 Score: 0.2119
+RMSE: 0.2362
+
+Coefficients:
+  log_beta: 0.0304
+  bottleneck_width: -0.0001
+  Intercept: 8.6516
+
+Cross-validation R2: -1.6875 (+/- 5.6385)
+
+Ridge R2: 0.2119
+Ridge Coefficients: log_beta=0.0304, bottleneck_width=-0.0001
+Saved: regression_predictions.png
+
+--- Non-Linear Models ---
+Train R2: 0.7531
+RMSE: 17.6007
+
+Feature Importance (Random Forest):
+  log_beta: 0.3834
+  bottleneck_width: 0.0186
+  beta_x_width: 0.5785
+  width_squared: 0.0195
+
+Cross-validation R2: 0.1160 (+/- 0.4119)
+Train R2: 0.7535
+RMSE: 17.5876
+
+Feature Importance (Gradient Boosting):
+  log_beta: 0.1287
+  bottleneck_width: 0.0133
+  beta_x_width: 0.8338
+  width_squared: 0.0243
+
+Cross-validation R2: 0.1001 (+/- 0.4158)
+Saved: feature_importance.png
+
+--- KMeans Clustering ---
+Saved: elbow_method.png
+Best k by silhouette: 5 (score=0.4897)
+
+Cluster characteristics (k=4):
+        log_beta         ... final_empirical_compression       
+            mean    std  ...                        mean    std
+cluster                  ...                                   
+0          0.316  1.435  ...                       8.719  0.086
+1         -4.668  2.211  ...                       8.251  0.177
+2         -5.538  1.852  ...                       8.726  0.056
+3         -4.396  2.490  ...                       8.258  0.120
+
+[4 rows x 8 columns]
+Saved: cluster_visualization.png
+
+--- DBSCAN ---
+Clusters: 8, Noise: 31
+
+--- PCA ---
+PCA samples: 516 (dropped 60)
+Explained variance: [3.73769782e-01 3.18879234e-01 1.80753204e-01 9.17223038e-02
+ 3.48753929e-02 8.43414227e-08]
+Loadings:
+                                        PC1    PC2    PC3    PC4    PC5    PC6
+log_beta                             -0.482 -0.287  0.355 -0.443  0.602 -0.000
+bottleneck_width                      0.164  0.079  0.861  0.475  0.012 -0.000
+test_accuracy                         0.534  0.322 -0.188  0.084  0.754  0.000
+final_empirical_compression          -0.436 -0.269 -0.313  0.755  0.263 -0.000
+final_val_loss                       -0.364  0.606  0.009  0.009 -0.000  0.707
+final_effective_capacity_utilization -0.364  0.606  0.009  0.009 -0.000 -0.707
+Saved: pca_analysis.png
+
+--- Decision Tree ---
+DT R²: 0.7416
+  log_beta: 0.1198
+  bottleneck_width: 0.0000
+  beta_x_width: 0.8443
+  width_squared: 0.0359
+Saved: decision_tree.png
+
+--- Per-Architecture Analysis ---
+
+resnet18: n=288, corr(logβ)=-0.7814, corr(w)=0.0485
+  RF CV R²: 0.5662 ± 0.7558
+
+vgg11: n=288, corr(logβ)=-0.7755, corr(w)=0.1263
+  RF CV R²: 0.8049 ± 0.2450
+
+--- Top 20 avg: logβ=-inf, w=374.4
+--- Bottom 20 avg: logβ=0.6000, w=60.0
+Saved: optimal_region.png
+
+Pareto-optimal: 2
+Saved: pareto_frontier.png
+
+============================================================
+SUMMARY
+============================================================
+Total: 576, Best acc: 86.2500, Mean: 57.1873
+LR CV R²: 0.4623, RF CV R²: 0.1160
+Pareto: 2, Clusters: 4
+Spearman acc: logβ r=-0.6963, w r=0.2419
+Spearman comp: logβ r=0.3647, w r=-0.4131
+
+Saved: analysis_summary.txt

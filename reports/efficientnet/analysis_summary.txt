@@ -1,0 +1,11 @@
+EfficientNet Numerical Analysis Summary
+============================================================
+Total experiments: 865
+Best accuracy: 81.9900
+Mean accuracy: 60.7800
+LR CV R²: 0.6564
+RF CV R²: 0.9503
+Pareto-optimal: 6
+Clusters: 4
+Spearman acc: logβ r=-0.7273, w r=0.2267
+Spearman comp: logβ r=0.2812, w r=-0.0269

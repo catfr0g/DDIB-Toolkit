@@ -1,0 +1,11 @@
+Numerical Analysis Summary
+============================================================
+Total experiments: 576
+Best accuracy: 86.2500
+Mean accuracy: 57.1873
+LR CV R²: 0.4623
+RF CV R²: 0.1160
+Pareto-optimal: 2
+Clusters: 4
+Spearman acc: logβ r=-0.6963, w r=0.2419
+Spearman comp: logβ r=0.3647, w r=-0.4131
